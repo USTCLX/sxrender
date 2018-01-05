@@ -1,0 +1,33 @@
+body{
+    -moz-user-select:none; /*火狐*/
+    -webkit-user-select:none; /*webkit浏览器*/
+    -ms-user-select:none; /*IE10*/
+    -khtml-user-select:none; /*早期浏览器*/
+    user-select:none;
+}
+
+.header{
+    text-align: center;
+}
+
+.container{
+    position:absolute;
+    left: 1%;
+    right:1%;
+    width: 98%;
+    height:600px;
+    background-color: #eee
+}
+
+.stage{
+    position: absolute;
+    top:0;
+    left:0;
+    right: 0;
+    bottom:0;
+    margin: auto;
+}
+
+canvas {
+    cursor: url("./public/pointer16.ico"),pointer;
+}
