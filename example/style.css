@@ -29,5 +29,5 @@ body{
 }
 
 canvas {
-    cursor: url("./public/pointer16.ico"),pointer;
+    cursor: url("../public/pointer16.ico"),pointer;
 }

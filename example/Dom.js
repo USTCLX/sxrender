@@ -12,7 +12,7 @@ window.onload = function(){
 	paintBoard.add({type:'ball',x:200,y:50,radius:50,color:'rgb(255,0,0)',draggable:true});
     paintBoard.add({type:'rect',x:100,y:520,w:100,h:50,color:'rgb(0,0,255)'});
     paintBoard.add({type:'ball',x:150,y:1000,radius:30,color:'rgb(0,122,0)'});
-    paintBoard.add({type:'rect',x:220,y:1400,w:100,h:50,color:'rgb(0,0,255)',draggable:true})
+    paintBoard.add({type:'rect',x:220,y:1400,w:100,h:50,color:'rgb(0,0,255)',draggable:true});
 
     paintBoard.reRender();
 
@@ -32,23 +32,23 @@ window.onload = function(){
     // backgroundImg.onload = function(){
     // 	paintBoard2.drawBackground({imgObj:backgroundImg})
     // };
-
-    // backgroundImg.src = './img.jpg'
+    //
+    // backgroundImg.src = '../public/img.jpg'
 
     
-  //   var paintBoardImg = new Image();
-  //   paintBoardImg.onload = function(){
-		// paintBoard2.add({
-	 //    	type:'image',
-	 //    	imgObj:paintBoardImg,
-	 //    	w:paintBoard.width, 
-	 //    	h:paintBoard.height,
-	 //    	x:0,
-	 //    	y:0
-	 //    });
-	 //    paintBoard2.reRender()
-  //   };
+    var paintBoardImg = new Image();
+    paintBoardImg.onload = function(){
+		paintBoard2.add({
+	    	type:'image',
+	    	imgObj:paintBoardImg,
+	    	w:paintBoard.width,
+	    	h:paintBoard.height,
+	    	x:0,
+	    	y:0
+	    });
+	    paintBoard2.reRender()
+    };
 
-  //   paintBoardImg.src = paintBoard.canvas.toDataURL();
+    paintBoardImg.src = paintBoard.canvas.toDataURL();
 
-}
+};
