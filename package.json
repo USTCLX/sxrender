@@ -1,0 +1,23 @@
+{
+  "name": "sxrender",
+  "version": "1.0.0",
+  "description": "a light weight render liberary of canvas",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/USTCLX/sxrender.git"
+  },
+  "author": "lixiang",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/USTCLX/sxrender/issues"
+  },
+  "homepage": "https://github.com/USTCLX/sxrender#readme",
+  "devDependencies": {
+    "gulp": "^3.9.1",
+    "rollup": "^0.53.3"
+  }
+}
