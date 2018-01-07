@@ -21,7 +21,7 @@ gulp.task('script',function(){
         ]
     }).then(function(bundle){
         bundle.write({
-            // 产出文件使用 umd 规范（即兼容 amd cjs 和 iife）
+            // 产出文件使用 umd 规范（即兼容 amd cjs amd和 iife）
             format: 'umd',
             // iife 规范下的全局变量名称
             name: 'SXRender',
@@ -30,11 +30,15 @@ gulp.task('script',function(){
         }).then(function(){
             // 待 rollup 打包 js 完毕之后，再进行如下的处理：
             gulp.src('./release/SXRender.js')
-                .pipe(gulp.dest('./release'))
                 .pipe(uglify())
                 .pipe(rename('SXRender.min.js'))
                 .pipe(sourcemaps.write(''))
                 .pipe(gulp.dest('./release'))
         })
     })
+});
+
+gulp.task('default',function(){
+    console.log('watching js modify...');
+    gulp.watch('./src/*.js',['script'])
 });
