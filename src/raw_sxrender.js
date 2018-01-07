@@ -164,7 +164,7 @@
 
         this.init(canvas,ctx,contentW,contentH,drawScrollBar);
 
-    }
+    };
 
     Object.assign(SXRender.prototype,{
         init:function(canvas,ctx,contentW,contentH,drawScrollBar){
@@ -194,7 +194,7 @@
             this.contentOffset = {
                 x:0,
                 y:0                      //内容的偏移
-            }
+            };
 
             //objs list
             this.objs = [];
@@ -207,7 +207,7 @@
             this._contentVelcoity = {   //内容滚动的速度
                 y:0,
                 x:0
-            };                          
+            };
             this._amplitude = {         //速度的幅度
                 y:0,
                 x:0
@@ -219,10 +219,10 @@
             this._targetPos = {          //内容滑动后的目标位置
                 x:0,
                 y:0
-            }     
+            };
             this._ticker = null;        //内部定时器,用于捕获速度
             this._timeStamp = 0;        //保存上次move的时刻的时间戳
-            
+
 
             //events
             this.canvas.addEventListener('mousedown', mouseDownHandler.bind(this), false);
@@ -401,7 +401,7 @@
                 color:'#888888'
             })
         }
-    })
+    });
 
     
     /**

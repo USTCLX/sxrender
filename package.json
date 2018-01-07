@@ -2,7 +2,7 @@
   "name": "sxrender",
   "version": "1.0.0",
   "description": "a light weight render liberary of canvas",
-  "main": "index.js",
+  "main": "release/sxrender.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -17,7 +17,16 @@
   },
   "homepage": "https://github.com/USTCLX/sxrender#readme",
   "devDependencies": {
+    "babel-core": "^6.26.0",
+    "babel-plugin-external-helpers": "^6.22.0",
+    "babel-preset-env": "^1.6.1",
+    "babel-preset-latest": "^6.24.1",
     "gulp": "^3.9.1",
-    "rollup": "^0.53.3"
+    "gulp-rename": "^1.2.2",
+    "gulp-sourcemaps": "^2.6.3",
+    "gulp-uglify": "^3.0.0",
+    "rollup": "^0.53.3",
+    "rollup-plugin-babel": "^3.0.3",
+    "rollup-plugin-node-resolve": "^3.0.0"
   }
 }
