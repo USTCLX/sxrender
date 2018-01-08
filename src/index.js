@@ -2,7 +2,8 @@
  * Created by lixiang on 2018/1/7.
  */
 
-import * as Utils from './utils';
+import * as Utils from './utils/utils';
+import Animation from './Animation/Animation';
 
 const  timeConstant = 500; //时间常量，用于惯性滚动的计算中,IOS中为325
 

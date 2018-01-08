@@ -40,5 +40,6 @@ gulp.task('script',function(){
 
 gulp.task('default',function(){
     console.log('watching js modify...');
-    gulp.watch('./src/*.js',['script'])
+    gulp.watch('./src/*.js',['script']);
+    gulp.watch('./src/*/*.js',['script']);
 });
