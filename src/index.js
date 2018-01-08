@@ -247,7 +247,8 @@ let SXRender = function (opts){
 
 };
 
-Object.assign(SXRender.prototype,{
+SXRender.prototype = {
+    constructor:SXRender,
     init:function(canvas,ctx,contentW,contentH,drawScrollBar){
         //canvas
         this.canvas = canvas;
@@ -482,6 +483,6 @@ Object.assign(SXRender.prototype,{
             color:'#888888'
         })
     }
-});
+};
 
 export default SXRender;
