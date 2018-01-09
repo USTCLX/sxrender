@@ -6,8 +6,6 @@ import * as Utils from './utils/utils';
 import Animation from './Animation/Animation';
 import InertialAnimation from './Animation/InertialAnimation'
 
-const  timeConstant = 500; //时间常量，用于惯性滚动的计算中,IOS中为325
-
 
 /**
  * 鼠标按下事件。
@@ -32,8 +30,6 @@ function mouseDownHandler(e){
 
         this._contentVelcoity.y = 0;
         this._contentVelcoity.x = 0;
-        this._amplitude.y = 0;
-        this._amplitude.x = 0;
 
         //跟踪鼠标，获取速度，50ms获取一次
         this._timeStamp = Date.now();
@@ -278,11 +274,7 @@ SXRender.prototype = {
             y:0,
             x:0
         };
-        this._amplitude = {         //速度的幅度
-            y:0,
-            x:0
-        };
-        this._frame = {             //保存旧的鼠标坐标
+        this._frame = {             //保存旧的鼠标坐标,用于获取速度
             x:0,
             y:0,
         };
