@@ -152,16 +152,247 @@ var genGUID = function genGUID() {
 //     setTimeout(func, interval);
 // };
 
+
+function requestAnimationFrame$1 (func, interval) {
+  setTimeout(func, interval);
+}
+
+/**
+ * 时间曲线
+ * @type {{linear: timingFunctions.linear, easeInQuad: timingFunctions.easeInQuad, easeOutQuad: timingFunctions.easeOutQuad, easeInOutQuad: timingFunctions.easeInOutQuad, easeInCubic: timingFunctions.easeInCubic, easeOutCubic: timingFunctions.easeOutCubic, easeInOutCubic: timingFunctions.easeInOutCubic, easeInQuart: timingFunctions.easeInQuart, easeOutQuart: timingFunctions.easeOutQuart, easeInOutQuart: timingFunctions.easeInOutQuart, easeInQuint: timingFunctions.easeInQuint, easeOutQuint: timingFunctions.easeOutQuint, easeInOutQuint: timingFunctions.easeInOutQuint, spring: timingFunctions.spring}}
+ */
+var timingFunctions = {
+    // no easing, no acceleration
+    linear: function linear(t) {
+        return t;
+    },
+    // accelerating from zero velocity
+    easeInQuad: function easeInQuad(t) {
+        return t * t;
+    },
+    // decelerating to zero velocity
+    easeOutQuad: function easeOutQuad(t) {
+        return t * (2 - t);
+    },
+    // acceleration until halfway, then deceleration
+    easeInOutQuad: function easeInOutQuad(t) {
+        return t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+    },
+    // accelerating from zero velocity
+    easeInCubic: function easeInCubic(t) {
+        return t * t * t;
+    },
+    // decelerating to zero velocity
+    easeOutCubic: function easeOutCubic(t) {
+        return --t * t * t + 1;
+    },
+    // acceleration until halfway, then deceleration
+    easeInOutCubic: function easeInOutCubic(t) {
+        return t < .5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
+    },
+    // accelerating from zero velocity
+    easeInQuart: function easeInQuart(t) {
+        return t * t * t * t;
+    },
+    // decelerating to zero velocity
+    easeOutQuart: function easeOutQuart(t) {
+        return 1 - --t * t * t * t;
+    },
+    // acceleration until halfway, then deceleration
+    easeInOutQuart: function easeInOutQuart(t) {
+        return t < .5 ? 8 * t * t * t * t : 1 - 8 * --t * t * t * t;
+    },
+    // accelerating from zero velocity
+    easeInQuint: function easeInQuint(t) {
+        return t * t * t * t * t;
+    },
+    // decelerating to zero velocity
+    easeOutQuint: function easeOutQuint(t) {
+        return 1 + --t * t * t * t * t;
+    },
+    // acceleration until halfway, then deceleration
+    easeInOutQuint: function easeInOutQuint(t) {
+        return t < .5 ? 16 * t * t * t * t * t : 1 + 16 * --t * t * t * t * t;
+    },
+    //spring
+    spring: function spring(t) {
+        return -0.5 * Math.exp(-6 * t) * (-2 * Math.exp(6 * t) + Math.sin(12 * t) + 2 * Math.cos(12 * t));
+    }
+};
+
+//状态表
+var stateTypes = {
+    idle: 'idle',
+    running: 'running',
+    paused: 'paused'
+};
+
+//状态构造器
+function State(stateType, repeat, curFrame, curValue) {
+    this.stateType = stateType || stateTypes.idle;
+    this.repeat = repeat || 0;
+    this.curFrame = curFrame || 0;
+    this.curValue = curValue;
+}
+
 /**
  * Created by lixiang on 2018/1/8.
  */
 
+//插值
+function interpolateValue(startValue, stopValue, progress) {
+    return Math.round(startValue + progress * (stopValue - startValue));
+}
+
+var Animation = function Animation(target, key, startValue, stopValue, duration, opts) {
+    opts = opts || {};
+
+    this.target = target;
+    this.key = key;
+    this.startValue = startValue;
+    this.stopValue = stopValue;
+    this.duration = duration;
+
+    this.fps = opts.fps || 60;
+    this.startDelay = opts.startDelay || 0;
+    this.autoReverse = opts.autoReverse || false;
+    this.repeatCount = opts.repeatCount || 1;
+    this.appliedOnCompletion = opts.appliedOnCompletion || function () {};
+    this.timingFun = opts.timingFun || timingFunctions.linear; //必须是个函数
+
+    this.state = new State();
+    this.lastState = null;
+
+    //event
+    this.didStartCB = opts.didStartCB || function () {};
+    this.onFrameCB = opts.onFrameCB || function () {};
+    this.didPauseCB = opts.didPauseCB || function () {};
+    this.didStopCB = opts.didStopCB || function () {};
+
+    //private
+    this._p = 0; //进度
+    this._totalFrames = 0; //总帧数
+    this._timeStep = 0; //定时器间隔
+    this._timeStamp = 0; //开始动画时间戳
+    this.init();
+};
+
+var coreStartHandler = function coreStartHandler() {
+    if (this.state.stateType !== stateTypes.running) {
+        return;
+    }
+
+    this._p = this.timingFun(this.state.curFrame / this._totalFrames);
+    this.state.curValue = interpolateValue(this.startValue, this.stopValue, this._p);
+
+    if (this.target.hasOwnProperty(this.key)) {
+        this.target[this.key] = this.state.curValue;
+    }
+
+    this.onFrameCB && this.onFrameCB();
+    if (this.state.curFrame < this._totalFrames) {
+        requestAnimationFrame$1(coreStartHandler.bind(this), this._timeStep);
+    } else {
+        this.stop();
+    }
+
+    this.state.curFrame++;
+    this.onFrameCB && this.onFrameCB();
+};
+
+Animation.prototype = {
+    constructor: Animation,
+    init: function init() {
+        //计算总帧数
+        this._totalFrames = this.duration / 1000 * this.fps;
+        //计算定时器间隔
+        this._timeStep = Math.round(1 / this.fps);
+    },
+    start: function start() {
+        if (this.state.stateType !== stateTypes.idle) {
+            return;
+        }
+
+        this.state.stateType = stateTypes.running;
+
+        setTimeout(function () {
+            this.didStartCB && this.didStartCB();
+            requestAnimationFrame$1(coreStartHandler.bind(this), this._timeStep);
+        }.bind(this), this.startDelay);
+    },
+    stop: function stop() {
+        this.state.stateType = stateTypes.idle;
+        this.state.curValue = 0;
+        this.state.curFrame = 0;
+        this._totalFrames = 0;
+    }
+};
+
+//惯性滚动动画
+var InertialAnimation = function InertialAnimation(target, key, startValue, stopValue, amplitude, opts) {
+    Animation.apply(this, [target, key, startValue, stopValue, null, opts]);
+
+    this._amplitude = amplitude;
+    this.init();
+};
+
+var inertialStartHandler = function inertialStartHandler() {
+    var elapsed = Date.now() - this._timeStamp;
+    var state = this.state;
+
+    if (this.state.stateType !== stateTypes.running) {
+        return;
+    }
+
+    state.curValue = calInertialValue(this.stopValue, this._amplitude, elapsed);
+    if (Math.abs(this.stopValue - state.curValue) < 1) {
+        state.curValue = this.stopValue;
+        this.onFrameCB && this.onFrameCB();
+        this.stop();
+    } else {
+        this.onFrameCB && this.onFrameCB();
+        requestAnimationFrame(inertialStartHandler.bind(this), this._timeStep);
+    }
+};
+
+/**
+ * y`目标位置，A当前振幅(速度),c时间常量
+ * y(t)=y`-A*e^(-t/c)
+ * timeConstant = 500; //时间常量，用于惯性滚动的计算中,IOS中为325
+ * 返回值为y(t)
+ */
+
+var calInertialValue = function calInertialValue(target, amplitude, elapsed) {
+    var timeConstant = 500;
+
+    return target - amplitude * Math.exp(-elapsed / timeConstant);
+};
+
+//继承Animation
+InertialAnimation.prototype = Object.create(Animation.prototype);
+Object.assign(InertialAnimation.prototype, {
+    constructor: InertialAnimation,
+    init: function init() {
+        this._timeStep = 1 / this.fps;
+    },
+    start: function start() {
+        if (this.state.stateType !== stateTypes.idle) {
+            return;
+        }
+
+        this.state.stateType = stateTypes.running;
+
+        setTimeout(function () {
+            this.didStartCB && this.didStartCB();
+            this._timeStamp = Date.now();
+            requestAnimationFrame(inertialStartHandler.bind(this), this._timeStep);
+        }.bind(this), this.startDelay);
+    }
+});
+
 /**
  * Created by lixiang on 2018/1/7.
  */
-
-var timeConstant = 500; //时间常量，用于惯性滚动的计算中,IOS中为325
-
 
 /**
  * 鼠标按下事件。
@@ -179,6 +410,8 @@ function mouseDownHandler(e) {
     } else {
         //拖动界面
         this.scratching = true;
+
+        this._animation ? this._animation.stop() : null;
         clearInterval(this._animation); //清除动画
         clearInterval(this._ticker);
 
@@ -244,16 +477,35 @@ function mouseUpHandler(e) {
                     //清除引用
                     clearInterval(this._animation);
                     this._animation = null;
-                    timeTick = null, p = null;
+                    timeTick = null;
+                    p = null;
                 }
             }.bind(this), timeStep);
         } else {
             //开始惯性滚动
+            var amplitude;
             if (this._contentVelcoity.y > 30 || this._contentVelcoity.y < -30) {
-                this._amplitude.y = 0.8 * this._contentVelcoity.y;
-                this._timeStamp = Date.now();
-                this._targetPos.y = Math.round(this.contentOffset.y + this._amplitude.y);
-                requestAnimationFrame(autoScroll.bind(this));
+                amplitude = 0.8 * this._contentVelcoity.y;
+                // this._timeStamp = Date.now();
+                this._targetPos.y = Math.round(this.contentOffset.y + amplitude);
+
+                //开启动画
+                var self = this;
+                this._animation = new InertialAnimation(null, '', this.contentOffset.y, this._targetPos.y, amplitude);
+                this._animation.onFrameCB = function () {
+                    //检查是否越界
+                    if (self.contentOffset.y > 0) {
+                        self.contentOffset.y = 0;
+                        self._animation.stop();
+                    } else if (self.contentOffset.y < self.height - self.contentH) {
+                        self.contentOffset.y = self.height - self.contentH;
+                        self._animation.stop();
+                    } else {
+                        self.contentOffset.y = this.state.curValue;
+                    }
+                    self.reRender();
+                };
+                this._animation.start();
             }
         }
     }
@@ -321,36 +573,6 @@ function mouseMoveHandler(e) {
 
         this.reRender();
     }
-}
-
-/**
- * 自动滚动函数
- * 当前位置与目标位置以及时间的关系
- * y`目标位置，A当前振幅(速度),c时间常量
- * y(t)=y`-A*e^(-t/c)
- * @return {[type]} [description]
- */
-function autoScroll() {
-    var elapsed, deltaY;
-
-    elapsed = Date.now() - this._timeStamp;
-
-    deltaY = -this._amplitude.y * Math.exp(-elapsed / timeConstant);
-
-    if (this.contentOffset.y > 0) {
-        this.contentOffset.y = 0;
-        this._contentVelcoity.y = this._amplitude.y / timeConstant * Math.exp(-elapsed / timeConstant); //求导得出此刻的速度
-    } else if (this.contentOffset.y < this.height - this.contentH) {
-        this.contentOffset.y = this.height - this.contentH;
-    } else if (this._amplitude.y || this._amplitude.x) {
-        if (deltaY > 0.5 || deltaY < -0.5) {
-            this.contentOffset.y = this._targetPos.y + deltaY;
-            requestAnimationFrame(autoScroll.bind(this));
-        } else {
-            this.contentOffset.y = this._targetPos.y;
-        }
-    }
-    this.reRender();
 }
 
 var SXRender = function SXRender(opts) {

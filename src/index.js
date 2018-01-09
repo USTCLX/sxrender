@@ -4,6 +4,7 @@
 
 import * as Utils from './utils/utils';
 import Animation from './Animation/Animation';
+import InertialAnimation from './Animation/InertialAnimation'
 
 const  timeConstant = 500; //时间常量，用于惯性滚动的计算中,IOS中为325
 
@@ -24,6 +25,8 @@ function mouseDownHandler(e){
     }else{
         //拖动界面
         this.scratching = true;
+
+        this._animation?this._animation.stop():null;
         clearInterval(this._animation); //清除动画
         clearInterval(this._ticker);
 
@@ -92,17 +95,35 @@ function mouseUpHandler(e){
                     //清除引用
                     clearInterval(this._animation);
                     this._animation = null;
-                    timeTick = null,
+                    timeTick = null;
                         p = null;
                 }
             }.bind(this),timeStep)
         }else{
             //开始惯性滚动
+            var amplitude;
             if(this._contentVelcoity.y>30||this._contentVelcoity.y<-30){
-                this._amplitude.y = 0.8*this._contentVelcoity.y;
-                this._timeStamp = Date.now();
-                this._targetPos.y = Math.round(this.contentOffset.y+this._amplitude.y)
-                requestAnimationFrame(autoScroll.bind(this));
+                amplitude = 0.8*this._contentVelcoity.y;
+                // this._timeStamp = Date.now();
+                this._targetPos.y = Math.round(this.contentOffset.y+amplitude);
+
+                //开启动画
+                var self = this;
+                this._animation= new InertialAnimation(null,'',this.contentOffset.y,this._targetPos.y,amplitude);
+                this._animation.onFrameCB = function(){
+                    //检查是否越界
+                    if(self.contentOffset.y>0){
+                        self.contentOffset.y = 0;
+                        self._animation.stop();
+                    }else if(self.contentOffset.y<(self.height-self.contentH)){
+                        self.contentOffset.y = self.height-self.contentH;
+                        self._animation.stop();
+                    }else{
+                        self.contentOffset.y = this.state.curValue;
+                    }
+                    self.reRender();
+                };
+                this._animation.start();
             }
         }
 
@@ -187,40 +208,6 @@ function mouseOutHandler(e){
         this.scratching = false;
     }
     this.selectObjId = 0;
-}
-
-
-/**
- * 自动滚动函数
- * 当前位置与目标位置以及时间的关系
- * y`目标位置，A当前振幅(速度),c时间常量
- * y(t)=y`-A*e^(-t/c)
- * @return {[type]} [description]
- */
-function autoScroll(){
-    var elapsed,
-        deltaY,
-        tempSpringTimeFun;
-
-    elapsed = Date.now()-this._timeStamp;
-
-    deltaY = -this._amplitude.y*Math.exp(-elapsed/timeConstant);
-
-    if(this.contentOffset.y>0){
-        this.contentOffset.y = 0;
-        this._contentVelcoity.y = (this._amplitude.y/timeConstant)*Math.exp(-elapsed/timeConstant);//求导得出此刻的速度
-
-    }else if(this.contentOffset.y<(this.height-this.contentH)){
-        this.contentOffset.y = this.height-this.contentH;
-    }else if(this._amplitude.y||this._amplitude.x){
-        if(deltaY>0.5||deltaY<-0.5){
-            this.contentOffset.y = this._targetPos.y+deltaY;
-            requestAnimationFrame(autoScroll.bind(this));
-        }else{
-            this.contentOffset.y = this._targetPos.y;
-        }
-    }
-    this.reRender();
 }
 
 
