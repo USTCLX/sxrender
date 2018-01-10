@@ -39,8 +39,20 @@ const inertialAnimateHandler = function(){
 const calInertialValue = function(target,amplitude,elapsed){
     const timeConstant = 500;
 
-    return target- amplitude*Math.exp(-elapsed/timeConstant);
+    if(typeof target ==='object'){
+        var obj = {};
+        for(var key in target){
+            if(target.hasOwnProperty(key)){
+                obj[key] = target[key] - amplitude[key]*Math.exp(-elapsed/timeConstant);
+            }
+        }
+        return obj;
+    }else{
+        return target- amplitude*Math.exp(-elapsed/timeConstant);
+    }
+
 };
+
 
 //继承Animation
 InertialAnimation.prototype = Object.create(Animation.prototype);

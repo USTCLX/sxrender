@@ -340,7 +340,7 @@ function mouseUpHandler(e){
                 this._animation.start();
             }else{
                 //开始惯性滚动
-                var amplitude;
+                var amplitude = {};
                 var targetPos = {};
                 if(this._contentVelcoity.y>30||this._contentVelcoity.y<-30){
                     amplitude = 0.8*this._contentVelcoity.y;
@@ -432,7 +432,6 @@ function mouseMoveHandler(e){
                         this.springOffset.x = Utils.rubberBanding(diff.x,this.width);
                     }else{
                         this.mouseDownPos.x = pos.x;
-                        // this.mouseDownPos.y = pos.y;
                         this.contentOffset.x += diff.x;
                     }
                 }else{
@@ -443,7 +442,6 @@ function mouseMoveHandler(e){
                         this.springOffset.x = Utils.rubberBanding(diff.x,this.width);
                     }else{
                         this.mouseDownPos.x = pos.x;
-                        // this.mouseDownPos.y = pos.y;
                         this.contentOffset.x += diff.x;
                     }
                 }
