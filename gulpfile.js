@@ -38,7 +38,7 @@ gulp.task('script',function(){
     })
 });
 
-gulp.task('default',function(){
+gulp.task('default',['script'],function(){
     console.log('watching js modify...');
     gulp.watch('./src/*.js',['script']);
     gulp.watch('./src/*/*.js',['script']);

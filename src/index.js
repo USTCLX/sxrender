@@ -4,208 +4,8 @@
 
 import * as Utils from './utils/utils';
 import Animation from './Animation/Animation';
-import InertialAnimation from './Animation/InertialAnimation'
-
-
-/**
- * 鼠标按下事件。
- * @param  {[type]} e [description]
- * @return {[type]}   [description]
- */
-function mouseDownHandler(e){
-    var pos = Utils.getRelativeRect(e);
-
-    this.selectObjId = Utils.checkClickElm(this.objs,pos,this.contentOffset)
-    this.mouseDownPos = pos;
-    if(!!this.selectObjId){
-        //选中物体
-        this.dragging = true;
-    }else{
-        //拖动界面
-        this.scratching = true;
-
-        this._animation?this._animation.stop():null;
-        clearInterval(this._animation); //清除动画
-        clearInterval(this._ticker);
-
-        this._contentVelcoity.y = 0;
-        this._contentVelcoity.x = 0;
-
-        //跟踪鼠标，获取速度，50ms获取一次
-        this._timeStamp = Date.now();
-        this._frame.y = pos.y;
-        this._ticker = setInterval(function(){
-            var now,elapsed,delta,v;
-            now = Date.now();
-            elapsed = now - this._timeStamp;
-            this._timeStamp = now;
-            delta = this.mouseDownPos.y-this._frame.y;
-            this._frame.y = this.mouseDownPos.y;
-            v = 1000*delta/(1+elapsed);
-            this._contentVelcoity.y = 0.8*v + 0.2*this._contentVelcoity.y;
-
-        }.bind(this),50)
-
-    }
-}
-
-/**
- * 鼠标抬起事件
- * @param  {[type]} e [description]
- * @return {[type]}   [description]
- */
-function mouseUpHandler(e){
-    if(this.dragging){
-
-        this.dragging = false;
-        this.selectObjId = 0;
-
-    }else if(this.scratching){
-
-        //扒页面
-        this.scratching = false;
-
-        //清空速度计算的轮训
-        clearInterval(this._ticker);
-
-        var timeTick = 0,
-            timeStep = 16,
-            p = 0,
-            limitOffsetY = 0.0001;
-
-        if(this.springOffset.y!==0){
-
-            //执行spring动画
-            clearInterval(this._animation);          //清除正在进行的其他动画
-            this._animation = setInterval(function(){
-                if(Math.abs(this.springOffset.y)>limitOffsetY){
-                    p = this._springTimeFun(timeTick/1000);
-                    timeTick += timeStep;
-
-                    this.springOffset.y = (1-p)*this.springOffset.y;
-                    // console.log('springOffset.y',this.springOffset.y)
-                    this.reRender();
-                }else{
-                    this.springOffset.y = 0;
-                    this.reRender();
-                    //清除引用
-                    clearInterval(this._animation);
-                    this._animation = null;
-                    timeTick = null;
-                        p = null;
-                }
-            }.bind(this),timeStep)
-        }else{
-            //开始惯性滚动
-            var amplitude;
-            if(this._contentVelcoity.y>30||this._contentVelcoity.y<-30){
-                amplitude = 0.8*this._contentVelcoity.y;
-                // this._timeStamp = Date.now();
-                this._targetPos.y = Math.round(this.contentOffset.y+amplitude);
-
-                //开启动画
-                var self = this;
-                this._animation= new InertialAnimation(null,'',this.contentOffset.y,this._targetPos.y,amplitude);
-                this._animation.onFrameCB = function(){
-                    //检查是否越界
-                    if(self.contentOffset.y>0){
-                        self.contentOffset.y = 0;
-                        self._animation.stop();
-                    }else if(self.contentOffset.y<(self.height-self.contentH)){
-                        self.contentOffset.y = self.height-self.contentH;
-                        self._animation.stop();
-                    }else{
-                        self.contentOffset.y = this.state.curValue;
-                    }
-                    self.reRender();
-                };
-                this._animation.start();
-            }
-        }
-
-    }
-}
-
-/**
- * 鼠标移动事件
- * @param  {[type]} e [description]
- * @return {[type]}   [description]
- */
-function mouseMoveHandler(e){
-    var dragging,
-        selectObjId,
-        selectObj,
-        pos,              //鼠标点击在canvas内的位置
-        diff = {x:0,y:0}; //鼠标位置间的差值
-
-    pos = Utils.getRelativeRect(e);
-
-    if(this.dragging){
-        //选中物体
-        diff.x = pos.x - this.mouseDownPos.x;
-        diff.y = pos.y - this.mouseDownPos.y;
-        this.mouseDownPos.x = pos.x;
-        this.mouseDownPos.y = pos.y;
-        selectObj = this.findObjById(this.selectObjId);
-        selectObj.x += diff.x;
-        selectObj.y += diff.y;
-        this.reRender();
-
-    }else if(this.scratching){
-        //扒动页面
-        // console.log('event',e.offsetY);
-
-        diff.x = pos.x-this.mouseDownPos.x;
-        diff.y = pos.y-this.mouseDownPos.y;
-
-        if(diff.y<0){
-            //内容向上
-            if(this.contentOffset.y<=(this.height-this.contentH)){
-                this.contentOffset.y = Math.floor(this.height-this.contentH);
-                //到达下边缘
-                this.springOffset.y = Utils.rubberBanding(diff.y,this.height);
-            }else{
-                this.mouseDownPos.x = pos.x;
-                this.mouseDownPos.y = pos.y;
-                this.contentOffset.y += diff.y;
-            }
-
-        }else{
-            //内容向下
-            if(this.contentOffset.y>=0){
-                //到达上边缘
-                this.contentOffset.y = 0;
-                this.springOffset.y = Utils.rubberBanding(diff.y,this.height);
-            }else{
-                this.mouseDownPos.x = pos.x;
-                this.mouseDownPos.y = pos.y;
-                this.contentOffset.y += diff.y;
-            }
-        }
-
-        //记录消耗的时间
-        // timeCost = Date.now()-lastTime;
-        // lastTime = Date.now();
-
-        this.reRender()
-    }
-}
-
-/**
- * 鼠标移除canvas事件
- * @param  {[type]} e [description]
- * @return {[type]}   [description]
- */
-function mouseOutHandler(e){
-    if(this.dragging){
-        this.dragging = false;
-    }
-    if(this.scratching){
-        this.scratching = false;
-    }
-    this.selectObjId = 0;
-}
-
+import InertialAnimation from './Animation/InertialAnimation';
+import SpringAnimation from './Animation/SpringAnimation';
 
 
 let SXRender = function (opts){
@@ -464,5 +264,184 @@ SXRender.prototype = {
         })
     }
 };
+
+/**
+ * 鼠标按下事件。
+ * @param  {[type]} e [description]
+ * @return {[type]}   [description]
+ */
+function mouseDownHandler(e){
+    var pos = Utils.getRelativeRect(e);
+
+    this.selectObjId = Utils.checkClickElm(this.objs,pos,this.contentOffset)
+    this.mouseDownPos = pos;
+    if(!!this.selectObjId){
+        //选中物体
+        this.dragging = true;
+    }else{
+        //拖动界面
+        this.scratching = true;
+
+        this._animation?this._animation.stop():null;
+        clearInterval(this._animation); //清除动画
+        clearInterval(this._ticker);
+
+        this._contentVelcoity.y = 0;
+        this._contentVelcoity.x = 0;
+
+        //跟踪鼠标，获取速度，50ms获取一次
+        this._timeStamp = Date.now();
+        this._frame.y = pos.y;
+        this._ticker = setInterval(function(){
+            var now,elapsed,delta,v;
+            now = Date.now();
+            elapsed = now - this._timeStamp;
+            this._timeStamp = now;
+            delta = this.mouseDownPos.y-this._frame.y;
+            this._frame.y = this.mouseDownPos.y;
+            v = 1000*delta/(1+elapsed);
+            this._contentVelcoity.y = 0.8*v + 0.2*this._contentVelcoity.y;
+
+        }.bind(this),50)
+
+    }
+}
+
+/**
+ * 鼠标抬起事件
+ * @param  {[type]} e [description]
+ * @return {[type]}   [description]
+ */
+function mouseUpHandler(e){
+    if(this.dragging){
+
+        this.dragging = false;
+        this.selectObjId = 0;
+
+    }else if(this.scratching){
+
+        //扒页面
+        this.scratching = false;
+
+        //清空速度计算的轮训
+        clearInterval(this._ticker);
+
+        var timeTick = 0,
+            timeStep = 16,
+            p = 0,
+            limitOffsetY = 0.0001;
+
+        if(this.springOffset.y!==0){
+            this._animation?this._animation.stop():null;
+            var self = this;
+            this._animation = new SpringAnimation(null,'',0,12,180,this.springOffset.y,0,2000);
+            this._animation.onFrameCB = function(){
+                self.springOffset.y = this.state.curValue;
+                self.reRender();
+            };
+            this._animation.start();
+        }else{
+            //开始惯性滚动
+            var amplitude;
+            if(this._contentVelcoity.y>30||this._contentVelcoity.y<-30){
+                amplitude = 0.8*this._contentVelcoity.y;
+                this._targetPos.y = Math.round(this.contentOffset.y+amplitude);
+                //开启动画
+                var self = this;
+                this._animation= new InertialAnimation(null,'',this.contentOffset.y,this._targetPos.y,amplitude);
+                this._animation.onFrameCB = function(){
+                    //检查是否越界
+                    if(self.contentOffset.y>0){
+                        self.contentOffset.y = 0;
+                        self._animation.stop();
+                    }else if(self.contentOffset.y<(self.height-self.contentH)){
+                        self.contentOffset.y = self.height-self.contentH;
+                        self._animation.stop();
+                    }else{
+                        self.contentOffset.y = this.state.curValue;
+                    }
+                    self.reRender();
+                };
+                this._animation.start();
+            }
+        }
+
+    }
+}
+
+/**
+ * 鼠标移动事件
+ * @param  {[type]} e [description]
+ * @return {[type]}   [description]
+ */
+function mouseMoveHandler(e){
+    var dragging,
+        selectObjId,
+        selectObj,
+        pos,              //鼠标点击在canvas内的位置
+        diff = {x:0,y:0}; //鼠标位置间的差值
+
+    pos = Utils.getRelativeRect(e);
+
+    if(this.dragging){
+        //选中物体
+        diff.x = pos.x - this.mouseDownPos.x;
+        diff.y = pos.y - this.mouseDownPos.y;
+        this.mouseDownPos.x = pos.x;
+        this.mouseDownPos.y = pos.y;
+        selectObj = this.findObjById(this.selectObjId);
+        selectObj.x += diff.x;
+        selectObj.y += diff.y;
+        this.reRender();
+
+    }else if(this.scratching){
+        //扒动页面
+
+        diff.x = pos.x-this.mouseDownPos.x;
+        diff.y = pos.y-this.mouseDownPos.y;
+
+        if(diff.y<0){
+            //内容向上
+            if(this.contentOffset.y<=(this.height-this.contentH)){
+                this.contentOffset.y = Math.floor(this.height-this.contentH);
+                //到达下边缘
+                this.springOffset.y = Utils.rubberBanding(diff.y,this.height);
+            }else{
+                this.mouseDownPos.x = pos.x;
+                this.mouseDownPos.y = pos.y;
+                this.contentOffset.y += diff.y;
+            }
+
+        }else{
+            //内容向下
+            if(this.contentOffset.y>=0){
+                //到达上边缘
+                this.contentOffset.y = 0;
+                this.springOffset.y = Utils.rubberBanding(diff.y,this.height);
+            }else{
+                this.mouseDownPos.x = pos.x;
+                this.mouseDownPos.y = pos.y;
+                this.contentOffset.y += diff.y;
+            }
+        }
+
+        this.reRender()
+    }
+}
+
+/**
+ * 鼠标移除canvas事件
+ * @param  {[type]} e [description]
+ * @return {[type]}   [description]
+ */
+function mouseOutHandler(e){
+    if(this.dragging){
+        this.dragging = false;
+    }
+    if(this.scratching){
+        this.scratching = false;
+    }
+    this.selectObjId = 0;
+}
 
 export default SXRender;

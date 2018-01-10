@@ -50,4 +50,9 @@ function State(stateType,repeat,curFrame,curValue){
     this.curValue = curValue;
 }
 
-export {timingFunctions,stateTypes,State}
+//插值
+function interpolateValue(startValue,stopValue,progress){
+    return Math.round(startValue+progress*(stopValue-startValue));
+}
+
+export {timingFunctions,stateTypes,State,interpolateValue}

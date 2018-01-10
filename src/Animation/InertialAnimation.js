@@ -1,11 +1,12 @@
 import Animation from './Animation';
-import {stateTypes} from "./common"
+import {stateTypes} from "./common";
+import requestAnimationFrame from './requestAnimationFrame'
 
 //惯性滚动动画
 let InertialAnimation = function(target,key,startValue,stopValue,amplitude,opts){
     Animation.apply(this,[target,key,startValue,stopValue,null,opts]);
 
-    this._amplitude = amplitude;
+    this.amplitude = amplitude;
     this.init();
 };
 
@@ -17,7 +18,7 @@ const inertialStartHandler = function(){
         return;
     }
 
-    state.curValue = calInertialValue(this.stopValue,this._amplitude,elapsed);
+    state.curValue = calInertialValue(this.stopValue,this.amplitude,elapsed);
     if(Math.abs(this.stopValue-state.curValue)<1){
         state.curValue = this.stopValue;
         this.onFrameCB&&this.onFrameCB();
@@ -60,7 +61,6 @@ Object.assign(InertialAnimation.prototype,{
             this._timeStamp = Date.now();
             requestAnimationFrame(inertialStartHandler.bind(this),this._timeStep);
         }.bind(this),this.startDelay);
-
     }
 });
 

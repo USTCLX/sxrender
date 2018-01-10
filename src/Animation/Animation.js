@@ -3,13 +3,10 @@
  */
 
 import requestAnimationFrame from './requestAnimationFrame';
-import {timingFunctions,stateTypes,State} from "./common"
+import {timingFunctions,stateTypes,State,interpolateValue} from "./common"
 
 
-//插值
-function interpolateValue(startValue,stopValue,progress){
-    return Math.round(startValue+progress*(stopValue-startValue));
-}
+
 
 let Animation = function(target,key,startValue,stopValue,duration,opts){
     opts = opts||{};
@@ -64,7 +61,6 @@ const coreStartHandler = function(){
     }
 
     this.state.curFrame++;
-    this.onFrameCB&&this.onFrameCB();
 };
 
 Animation.prototype = {
