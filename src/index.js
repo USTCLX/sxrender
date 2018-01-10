@@ -3,9 +3,7 @@
  */
 
 import * as Utils from './utils/utils';
-import Animation from './Animation/Animation';
-import InertialAnimation from './Animation/InertialAnimation';
-import SpringAnimation from './Animation/SpringAnimation';
+import {Animation,InertialAnimation,SpringAnimation} from './Animation'
 
 
 let SXRender = function (opts){
