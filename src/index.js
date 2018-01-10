@@ -39,13 +39,23 @@ SXRender.prototype = {
         //basic attrs
         this.width = canvas.width;
         this.height = canvas.height;
-        this.dragging = false;        //hold一个物体
+        this.dragging = false;        //drag一个物体
         this.scratching = false;     //抓住背景，可拖动内容整体滚动
         this.selectObjId = 0;
         this.contentW = contentW;    //内容宽度
         this.contentH = contentH;    //内容高度
         this.drawScrollBar = drawScrollBar;
         this.backgroundImg = {};
+        this.scrollVEnabled = !!(this.contentH&&this.contentH>this.height);
+        this.scrollHEnabled = !!(this.contentW&&this.contentW>this.width);
+        this.limitX = {
+            min:this.width-this.contentW,
+            max:0
+        };
+        this.limitY = {
+            min:this.height-this.contentH,
+            max:0
+        };
 
         this.mouseDownPos = {
             x:0,
@@ -63,9 +73,6 @@ SXRender.prototype = {
         //objs list
         this.objs = [];
 
-        //time function
-        this._springTimeFun = Utils.calTimingFunctionBySpring(12,180,0);
-
         //animation
         this._animation = null;     //动画
         this._contentVelcoity = {   //内容滚动的速度
@@ -75,10 +82,6 @@ SXRender.prototype = {
         this._frame = {             //保存旧的鼠标坐标,用于获取速度
             x:0,
             y:0,
-        };
-        this._targetPos = {          //内容滑动后的目标位置
-            x:0,
-            y:0
         };
         this._ticker = null;        //内部定时器,用于捕获速度
         this._timeStamp = 0;        //保存上次move的时刻的时间戳
@@ -207,26 +210,27 @@ SXRender.prototype = {
      */
     reRender:function(){
         this.clearCtx();
-        this.backgroundImg.content?this.drawBackground():'';
+        this.backgroundImg.content?this.drawBackground():null;
         this.ctx.setTransform(1,0,0,1,this.contentOffset.x,this.contentOffset.y);
         var objs = this.objs||[];
         for(var i=0,il=objs.length;i<il;i++){
             switch(objs[i].type){
                 case 'ball':
-                    this.drawBall(objs[i])
+                    this.drawBall(objs[i]);
                     break;
                 case 'rect':
                     this.drawRect(objs[i]);
                     break;
                 case 'image':
-                    this.drawImage(objs[i])
+                    this.drawImage(objs[i]);
                     break;
                 default:
-                    console.log('miss in reRender')
+                    console.log('miss in reRender');
                     break;
             }
         }
-        this.drawScrollBar?this._drawProgress():'';
+        this.ctx.setTransform(1,0,0,1,0,0);
+        // this.drawScrollBar?this._drawProgress():'';
     },
     findObjById:function(id){
         for(var i=0,il=this.objs.length;i<il;i++){
@@ -243,13 +247,12 @@ SXRender.prototype = {
         });
         this.objs.push(o);
     },
-    _drawProgress:function(){
-        this.ctx.setTransform(1,0,0,1,0,0);
+    _drawProgress:function() {
         var top,left,width,height,springOffsetY;
         springOffsetY = (this.springOffset.y>0)?-this.springOffset.y:(-2*this.springOffset.y);
         width = 4;
         height  = Math.round((this.height*this.height)/this.contentH)-Math.abs(this.springOffset.y);
-        height = (height<10)?10:height
+        height = (height<10)?10:height;
         top = Math.round((-this.contentOffset.y*(this.height))/this.contentH)+springOffsetY;
         left = this.width-width;
 
@@ -271,7 +274,7 @@ SXRender.prototype = {
 function mouseDownHandler(e){
     var pos = Utils.getRelativeRect(e);
 
-    this.selectObjId = Utils.checkClickElm(this.objs,pos,this.contentOffset)
+    this.selectObjId = Utils.checkClickElm(this.objs,pos,this.contentOffset);
     this.mouseDownPos = pos;
     if(!!this.selectObjId){
         //选中物体
@@ -281,27 +284,32 @@ function mouseDownHandler(e){
         this.scratching = true;
 
         this._animation?this._animation.stop():null;
-        clearInterval(this._animation); //清除动画
+        // clearInterval(this._animation); //清除动画
         clearInterval(this._ticker);
 
         this._contentVelcoity.y = 0;
         this._contentVelcoity.x = 0;
 
         //跟踪鼠标，获取速度，50ms获取一次
-        this._timeStamp = Date.now();
-        this._frame.y = pos.y;
-        this._ticker = setInterval(function(){
-            var now,elapsed,delta,v;
-            now = Date.now();
-            elapsed = now - this._timeStamp;
-            this._timeStamp = now;
-            delta = this.mouseDownPos.y-this._frame.y;
+        if(this.scrollVEnabled||this.scrollHEnabled){
+            this._timeStamp = Date.now();
             this._frame.y = this.mouseDownPos.y;
-            v = 1000*delta/(1+elapsed);
-            this._contentVelcoity.y = 0.8*v + 0.2*this._contentVelcoity.y;
-
-        }.bind(this),50)
-
+            this._frame.x = this.mouseDownPos.x;
+            this._ticker = setInterval(function(){
+                var now,elapsed,delta,v;
+                now = Date.now();
+                elapsed = now - this._timeStamp;
+                this._timeStamp = now;
+                delta = this.mouseDownPos.y-this._frame.y;
+                v = 1000*delta/(1+elapsed);
+                this._contentVelcoity.y = 0.8*v + 0.2*this._contentVelcoity.y;
+                delta = this.mouseDownPos.x - this._frame.x;
+                v = 1000*delta/(1+elapsed);
+                this._contentVelcoity.x = 0.8*v+0.2*this._contentVelcoity.x;
+                this._frame.y = this.mouseDownPos.y;
+                this._frame.x = this.mouseDownPos.x;
+            }.bind(this),50);
+        }
     }
 }
 
@@ -312,58 +320,51 @@ function mouseDownHandler(e){
  */
 function mouseUpHandler(e){
     if(this.dragging){
-
         this.dragging = false;
         this.selectObjId = 0;
-
     }else if(this.scratching){
-
         //扒页面
         this.scratching = false;
-
         //清空速度计算的轮训
         clearInterval(this._ticker);
 
-        var timeTick = 0,
-            timeStep = 16,
-            p = 0,
-            limitOffsetY = 0.0001;
-
-        if(this.springOffset.y!==0){
-            this._animation?this._animation.stop():null;
-            var self = this;
-            this._animation = new SpringAnimation(null,'',0,12,180,this.springOffset.y,0,2000);
-            this._animation.onFrameCB = function(){
-                self.springOffset.y = this.state.curValue;
-                self.reRender();
-            };
-            this._animation.start();
-        }else{
-            //开始惯性滚动
-            var amplitude;
-            if(this._contentVelcoity.y>30||this._contentVelcoity.y<-30){
-                amplitude = 0.8*this._contentVelcoity.y;
-                this._targetPos.y = Math.round(this.contentOffset.y+amplitude);
-                //开启动画
+        if(this.scrollVEnabled||this.scrollHEnabled){
+            if(this.springOffset.y!==0||this.springOffset.x!==0){
+                //开启弹跳动画
                 var self = this;
-                this._animation= new InertialAnimation(null,'',this.contentOffset.y,this._targetPos.y,amplitude);
+                this._animation = new SpringAnimation(null,'',0,12,180,this.springOffset,{x:0,y:0},2000);
                 this._animation.onFrameCB = function(){
-                    //检查是否越界
-                    if(self.contentOffset.y>0){
-                        self.contentOffset.y = 0;
-                        self._animation.stop();
-                    }else if(self.contentOffset.y<(self.height-self.contentH)){
-                        self.contentOffset.y = self.height-self.contentH;
-                        self._animation.stop();
-                    }else{
-                        self.contentOffset.y = this.state.curValue;
-                    }
+                    self.springOffset = this.state.curValue;
                     self.reRender();
                 };
                 this._animation.start();
+            }else{
+                //开始惯性滚动
+                var amplitude;
+                var targetPos = {};
+                if(this._contentVelcoity.y>30||this._contentVelcoity.y<-30){
+                    amplitude = 0.8*this._contentVelcoity.y;
+                    targetPos.y = Math.round(this.contentOffset.y+amplitude);
+                    //开启动画
+                    var self = this;
+                    this._animation= new InertialAnimation(null,'',this.contentOffset.y,targetPos.y,amplitude);
+                    this._animation.onFrameCB = function(){
+                        //检查是否越界
+                        if(self.contentOffset.y>0){
+                            self.contentOffset.y = 0;
+                            self._animation.stop();
+                        }else if(self.contentOffset.y<(self.height-self.contentH)){
+                            self.contentOffset.y = self.height-self.contentH;
+                            self._animation.stop();
+                        }else{
+                            self.contentOffset.y = this.state.curValue;
+                        }
+                        self.reRender();
+                    };
+                    this._animation.start();
+                }
             }
         }
-
     }
 }
 
@@ -395,35 +396,61 @@ function mouseMoveHandler(e){
     }else if(this.scratching){
         //扒动页面
 
-        diff.x = pos.x-this.mouseDownPos.x;
-        diff.y = pos.y-this.mouseDownPos.y;
-
-        if(diff.y<0){
-            //内容向上
-            if(this.contentOffset.y<=(this.height-this.contentH)){
-                this.contentOffset.y = Math.floor(this.height-this.contentH);
-                //到达下边缘
-                this.springOffset.y = Utils.rubberBanding(diff.y,this.height);
-            }else{
-                this.mouseDownPos.x = pos.x;
-                this.mouseDownPos.y = pos.y;
-                this.contentOffset.y += diff.y;
+        if(this.scrollVEnabled||this.scrollHEnabled){
+            diff.x = pos.x-this.mouseDownPos.x;
+            diff.y = pos.y-this.mouseDownPos.y;
+            if(this.scrollVEnabled){
+                if(diff.y<0){
+                    //内容向上
+                    if(this.contentOffset.y<=this.limitY.min){
+                        this.contentOffset.y = this.limitY.min;
+                        //到达下边缘
+                        this.springOffset.y = Utils.rubberBanding(diff.y,this.height);
+                    }else{
+                        this.mouseDownPos.y = pos.y;
+                        this.contentOffset.y += diff.y;
+                    }
+                }else{
+                    //内容向下
+                    if(this.contentOffset.y>=this.limitY.max){
+                        //到达上边缘
+                        this.contentOffset.y = this.limitY.max;
+                        this.springOffset.y = Utils.rubberBanding(diff.y,this.height);
+                    }else{
+                        this.mouseDownPos.y = pos.y;
+                        this.contentOffset.y += diff.y;
+                    }
+                }
             }
 
-        }else{
-            //内容向下
-            if(this.contentOffset.y>=0){
-                //到达上边缘
-                this.contentOffset.y = 0;
-                this.springOffset.y = Utils.rubberBanding(diff.y,this.height);
-            }else{
-                this.mouseDownPos.x = pos.x;
-                this.mouseDownPos.y = pos.y;
-                this.contentOffset.y += diff.y;
+            if(this.scrollHEnabled){
+                if(diff.x<0){
+                    //内容向左
+                    if(this.contentOffset.x<=this.limitX.min){
+                        //到达左边缘
+                        this.contentOffset.x = this.limitX.min;
+                        this.springOffset.x = Utils.rubberBanding(diff.x,this.width);
+                    }else{
+                        this.mouseDownPos.x = pos.x;
+                        // this.mouseDownPos.y = pos.y;
+                        this.contentOffset.x += diff.x;
+                    }
+                }else{
+                    //内容向右
+                    if(this.contentOffset.x>=this.limitX.max){
+                        //到达右边缘
+                        this.contentOffset.x = this.limitX.max;
+                        this.springOffset.x = Utils.rubberBanding(diff.x,this.width);
+                    }else{
+                        this.mouseDownPos.x = pos.x;
+                        // this.mouseDownPos.y = pos.y;
+                        this.contentOffset.x += diff.x;
+                    }
+                }
             }
+            this.reRender()
         }
 
-        this.reRender()
     }
 }
 

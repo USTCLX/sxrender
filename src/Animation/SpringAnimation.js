@@ -1,5 +1,5 @@
 import Animation from './Animation';
-import {stateTypes,interpolateValue} from "./common";
+import {stateTypes, interpolateNumber, interpolateObject} from "./common";
 import requestAnimationFrame from './requestAnimationFrame';
 
 /**
@@ -70,12 +70,12 @@ let SpringAnimation = function(target,key,initialVelocity,damping,stiffness,star
 //继承Animation
 SpringAnimation.prototype = Object.create(Animation.prototype);
 
-const springHandler = function(){
+const springAnimateHandler = function(){
     if(this.state.stateType!==stateTypes.running){
         return;
     }
     this._p = this.timingFun(this.state.curFrame/this._totalFrames);
-    this.state.curValue = interpolateValue(this.startValue,this.stopValue,this._p);
+    this.state.curValue = (typeof this.startValue!=='object')?interpolateNumber(this.startValue,this.stopValue,this._p):interpolateObject(this.startValue,this.stopValue,this._p);
 
     if(this.target&&this.target.hasOwnProperty(this.key)){
         this.target[this.key] = this.state.curValue;
@@ -83,7 +83,7 @@ const springHandler = function(){
 
     this.onFrameCB&&this.onFrameCB();
     if(this.state.curFrame<this._totalFrames){
-        requestAnimationFrame(springHandler.bind(this),this._timeStep);
+        requestAnimationFrame(springAnimateHandler.bind(this),this._timeStep);
     }else{
         this.state.curFrame = this.stopValue;
         this.stop();
@@ -102,7 +102,7 @@ Object.assign(SpringAnimation.prototype,{
         setTimeout(function(){
             this.didStartCB&&this.didStartCB();
             this._timeStamp = Date.now();
-            requestAnimationFrame(springHandler.bind(this),this._timeStep);
+            requestAnimationFrame(springAnimateHandler.bind(this),this._timeStep);
         }.bind(this),this.startDelay);
     }
 });

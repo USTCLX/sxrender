@@ -10,7 +10,7 @@ let InertialAnimation = function(target,key,startValue,stopValue,amplitude,opts)
     this.init();
 };
 
-const inertialStartHandler = function(){
+const inertialAnimateHandler = function(){
     var elapsed = Date.now()-this._timeStamp;
     var state = this.state;
 
@@ -25,7 +25,7 @@ const inertialStartHandler = function(){
         this.stop();
     }else{
         this.onFrameCB&&this.onFrameCB();
-        requestAnimationFrame(inertialStartHandler.bind(this),this._timeStep);
+        requestAnimationFrame(inertialAnimateHandler.bind(this),this._timeStep);
     }
 };
 
@@ -59,7 +59,7 @@ Object.assign(InertialAnimation.prototype,{
         setTimeout(function(){
             this.didStartCB&&this.didStartCB();
             this._timeStamp = Date.now();
-            requestAnimationFrame(inertialStartHandler.bind(this),this._timeStep);
+            requestAnimationFrame(inertialAnimateHandler.bind(this),this._timeStep);
         }.bind(this),this.startDelay);
     }
 });

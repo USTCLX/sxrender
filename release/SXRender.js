@@ -4,6 +4,12 @@
 	(global.SXRender = factory());
 }(this, (function () { 'use strict';
 
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) {
+  return typeof obj;
+} : function (obj) {
+  return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
+};
+
 /**
  * Created by lixiang on 2018/1/7.
  */
@@ -78,55 +84,9 @@ var rubberBanding = function rubberBanding(x, d) {
 };
 
 /**
- * 根据阻尼系数，弹力系数，初始速度，初始位置信息，计算出进度p关于时间t的函数
- * @param  {num} damping         阻尼系数
- * @param  {num} stiffness       弹力系数
- * @param  {num} initialVelocity 初始速度
- * @param  {num} startX          初始位置
- * @return {fun}                 p关于t的函数
+ * 生成uuid
+ * @returns {string}
  */
-var calTimingFunctionBySpring = function calTimingFunctionBySpring(damping, stiffness, initialVelocity, startX) {
-    var c = damping;
-    var k = stiffness;
-    var v = initialVelocity;
-    var t = c * c - 4 * k;
-    var r1, r2;
-    var alpha, beta;
-    var f0;
-    var fp0;
-    f0 = (startX || 0) - 1;
-    fp0 = v;
-    var C1, C2;
-    if (t > 0) {
-        t = Math.sqrt(t);
-        r1 = (-c + t) * 0.5;
-        r2 = (-c - t) * 0.5;
-
-        C1 = (fp0 - r2 * f0) / (r1 - r2);
-        C2 = (fp0 - r1 * f0) / (r2 - r1);
-        return function (t) {
-            return C1 * Math.exp(r1 * t) + C2 * Math.exp(r2 * t) + 1;
-        };
-    } else if (t == 0) {
-        r1 = -c * 0.5;
-        C1 = f0;
-        C2 = fp0 - C1 * r1;
-        return function (t) {
-            return (C1 + C2 * t) * Math.exp(r1 * t) + 1;
-        };
-    } else {
-        t = Math.sqrt(-t);
-        alpha = -c * 0.5;
-        beta = t * 0.5;
-
-        C1 = f0;
-        C2 = (fp0 - alpha * f0) / beta;
-        return function (t) {
-            return (C1 * Math.cos(beta * t) + C2 * Math.sin(beta * t)) * Math.exp(alpha * t) + 1;
-        };
-    }
-};
-
 var genGUID = function genGUID() {
     return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxx".replace(/[xy]/g, function (c) {
         var r = Math.random() * 16 | 0,
@@ -236,8 +196,18 @@ function State(stateType, repeat, curFrame, curValue) {
 }
 
 //插值
-function interpolateValue(startValue, stopValue, progress) {
+function interpolateNumber(startValue, stopValue, progress) {
     return Math.round(startValue + progress * (stopValue - startValue));
+}
+
+function interpolateObject(startObj, stopObj, progress) {
+    var obj = Object.assign({}, startObj);
+    for (var key in obj) {
+        if (obj.hasOwnProperty(key)) {
+            obj[key] = Math.round(startObj[key] + progress * (stopObj[key] - startObj[key]));
+        }
+    }
+    return obj;
 }
 
 /**
@@ -274,16 +244,17 @@ var Animation = function Animation(target, key, startValue, stopValue, duration,
     this._totalFrames = 0; //总帧数
     this._timeStep = 0; //定时器间隔
     this._timeStamp = 0; //开始动画时间戳
+
     this.init();
 };
 
-var coreStartHandler = function coreStartHandler() {
+var coreAnimateHandler = function coreAnimateHandler() {
     if (this.state.stateType !== stateTypes.running) {
         return;
     }
 
     this._p = this.timingFun(this.state.curFrame / this._totalFrames);
-    this.state.curValue = interpolateValue(this.startValue, this.stopValue, this._p);
+    this.state.curValue = _typeof(this.startValue) !== 'object' ? interpolateNumber(this.startValue, this.stopValue, this._p) : interpolateObject(this.startValue, this.stopValue, this._p);
 
     if (this.target.hasOwnProperty(this.key)) {
         this.target[this.key] = this.state.curValue;
@@ -291,7 +262,7 @@ var coreStartHandler = function coreStartHandler() {
 
     this.onFrameCB && this.onFrameCB();
     if (this.state.curFrame < this._totalFrames) {
-        requestAnimationFrame(coreStartHandler.bind(this), this._timeStep);
+        requestAnimationFrame(coreAnimateHandler.bind(this), this._timeStep);
     } else {
         this.stop();
     }
@@ -316,7 +287,7 @@ Animation.prototype = {
 
         setTimeout(function () {
             this.didStartCB && this.didStartCB();
-            requestAnimationFrame(coreStartHandler.bind(this), this._timeStep);
+            requestAnimationFrame(coreAnimateHandler.bind(this), this._timeStep);
         }.bind(this), this.startDelay);
     },
     stop: function stop() {
@@ -324,70 +295,21 @@ Animation.prototype = {
         this.state.curValue = 0;
         this.state.curFrame = 0;
         this._totalFrames = 0;
-    }
-};
-
-//惯性滚动动画
-var InertialAnimation = function InertialAnimation(target, key, startValue, stopValue, amplitude, opts) {
-    Animation.apply(this, [target, key, startValue, stopValue, null, opts]);
-
-    this.amplitude = amplitude;
-    this.init();
-};
-
-var inertialStartHandler = function inertialStartHandler() {
-    var elapsed = Date.now() - this._timeStamp;
-    var state = this.state;
-
-    if (this.state.stateType !== stateTypes.running) {
-        return;
-    }
-
-    state.curValue = calInertialValue(this.stopValue, this.amplitude, elapsed);
-    if (Math.abs(this.stopValue - state.curValue) < 1) {
-        state.curValue = this.stopValue;
-        this.onFrameCB && this.onFrameCB();
-        this.stop();
-    } else {
-        this.onFrameCB && this.onFrameCB();
-        requestAnimationFrame(inertialStartHandler.bind(this), this._timeStep);
-    }
-};
-
-/**
- * y`目标位置，A当前振幅(速度),c时间常量
- * y(t)=y`-A*e^(-t/c)
- * timeConstant = 500; //时间常量，用于惯性滚动的计算中,IOS中为325
- * 返回值为y(t)
- */
-
-var calInertialValue = function calInertialValue(target, amplitude, elapsed) {
-    var timeConstant = 500;
-
-    return target - amplitude * Math.exp(-elapsed / timeConstant);
-};
-
-//继承Animation
-InertialAnimation.prototype = Object.create(Animation.prototype);
-Object.assign(InertialAnimation.prototype, {
-    constructor: InertialAnimation,
-    init: function init() {
-        this._timeStep = 1 / this.fps;
+        this.didStopCB && this.didStopCB();
     },
-    start: function start() {
-        if (this.state.stateType !== stateTypes.idle) {
-            return;
+    pause: function pause() {
+        if (this.state.stateType === stateTypes.running) {
+            this.state.stateType = stateTypes.paused;
+            this.didPauseCB && this.didPauseCB();
         }
-
-        this.state.stateType = stateTypes.running;
-
-        setTimeout(function () {
-            this.didStartCB && this.didStartCB();
-            this._timeStamp = Date.now();
-            requestAnimationFrame(inertialStartHandler.bind(this), this._timeStep);
-        }.bind(this), this.startDelay);
+    },
+    resume: function resume() {
+        if (this.state.stateType === stateTypes.paused) {
+            this.state.stateTypes = stateTypes.running;
+            requestAnimationFrame(coreAnimateHandler.bind(this), this._timeStep);
+        }
     }
-});
+};
 
 /**
  * 根据阻尼系数，弹力系数，初始速度，初始位置信息，计算出进度p关于时间t的函数
@@ -397,7 +319,7 @@ Object.assign(InertialAnimation.prototype, {
  * @param  {num} startX          初始位置
  * @return {fun}                 p关于t的函数
  */
-var calTimingFunctionBySpring$1 = function calTimingFunctionBySpring(damping, stiffness, initialVelocity, startX) {
+var calTimingFunctionBySpring = function calTimingFunctionBySpring(damping, stiffness, initialVelocity, startX) {
     var c = damping;
     var k = stiffness;
     var v = initialVelocity;
@@ -455,12 +377,12 @@ var SpringAnimation = function SpringAnimation(target, key, initialVelocity, dam
 //继承Animation
 SpringAnimation.prototype = Object.create(Animation.prototype);
 
-var springHandler = function springHandler() {
+var springAnimateHandler = function springAnimateHandler() {
     if (this.state.stateType !== stateTypes.running) {
         return;
     }
     this._p = this.timingFun(this.state.curFrame / this._totalFrames);
-    this.state.curValue = interpolateValue(this.startValue, this.stopValue, this._p);
+    this.state.curValue = _typeof(this.startValue) !== 'object' ? interpolateNumber(this.startValue, this.stopValue, this._p) : interpolateObject(this.startValue, this.stopValue, this._p);
 
     if (this.target && this.target.hasOwnProperty(this.key)) {
         this.target[this.key] = this.state.curValue;
@@ -468,7 +390,7 @@ var springHandler = function springHandler() {
 
     this.onFrameCB && this.onFrameCB();
     if (this.state.curFrame < this._totalFrames) {
-        requestAnimationFrame(springHandler.bind(this), this._timeStep);
+        requestAnimationFrame(springAnimateHandler.bind(this), this._timeStep);
     } else {
         this.state.curFrame = this.stopValue;
         this.stop();
@@ -483,11 +405,73 @@ Object.assign(SpringAnimation.prototype, {
             return;
         }
         this.state.stateType = stateTypes.running;
-        this.timingFun = calTimingFunctionBySpring$1(this.damping, this.stiffness, this.initialVelocity, this.startX);
+        this.timingFun = calTimingFunctionBySpring(this.damping, this.stiffness, this.initialVelocity, this.startX);
         setTimeout(function () {
             this.didStartCB && this.didStartCB();
             this._timeStamp = Date.now();
-            requestAnimationFrame(springHandler.bind(this), this._timeStep);
+            requestAnimationFrame(springAnimateHandler.bind(this), this._timeStep);
+        }.bind(this), this.startDelay);
+    }
+});
+
+//惯性滚动动画
+var InertialAnimation = function InertialAnimation(target, key, startValue, stopValue, amplitude, opts) {
+    Animation.apply(this, [target, key, startValue, stopValue, null, opts]);
+
+    this.amplitude = amplitude;
+    this.init();
+};
+
+var inertialAnimateHandler = function inertialAnimateHandler() {
+    var elapsed = Date.now() - this._timeStamp;
+    var state = this.state;
+
+    if (this.state.stateType !== stateTypes.running) {
+        return;
+    }
+
+    state.curValue = calInertialValue(this.stopValue, this.amplitude, elapsed);
+    if (Math.abs(this.stopValue - state.curValue) < 1) {
+        state.curValue = this.stopValue;
+        this.onFrameCB && this.onFrameCB();
+        this.stop();
+    } else {
+        this.onFrameCB && this.onFrameCB();
+        requestAnimationFrame(inertialAnimateHandler.bind(this), this._timeStep);
+    }
+};
+
+/**
+ * y`目标位置，A当前振幅(速度),c时间常量
+ * y(t)=y`-A*e^(-t/c)
+ * timeConstant = 500; //时间常量，用于惯性滚动的计算中,IOS中为325
+ * 返回值为y(t)
+ */
+
+var calInertialValue = function calInertialValue(target, amplitude, elapsed) {
+    var timeConstant = 500;
+
+    return target - amplitude * Math.exp(-elapsed / timeConstant);
+};
+
+//继承Animation
+InertialAnimation.prototype = Object.create(Animation.prototype);
+Object.assign(InertialAnimation.prototype, {
+    constructor: InertialAnimation,
+    init: function init() {
+        this._timeStep = 1 / this.fps;
+    },
+    start: function start() {
+        if (this.state.stateType !== stateTypes.idle) {
+            return;
+        }
+
+        this.state.stateType = stateTypes.running;
+
+        setTimeout(function () {
+            this.didStartCB && this.didStartCB();
+            this._timeStamp = Date.now();
+            requestAnimationFrame(inertialAnimateHandler.bind(this), this._timeStep);
         }.bind(this), this.startDelay);
     }
 });
@@ -528,13 +512,23 @@ SXRender.prototype = {
         //basic attrs
         this.width = canvas.width;
         this.height = canvas.height;
-        this.dragging = false; //hold一个物体
+        this.dragging = false; //drag一个物体
         this.scratching = false; //抓住背景，可拖动内容整体滚动
         this.selectObjId = 0;
         this.contentW = contentW; //内容宽度
         this.contentH = contentH; //内容高度
         this.drawScrollBar = drawScrollBar;
         this.backgroundImg = {};
+        this.scrollVEnabled = !!(this.contentH && this.contentH > this.height);
+        this.scrollHEnabled = !!(this.contentW && this.contentW > this.width);
+        this.limitX = {
+            min: this.width - this.contentW,
+            max: 0
+        };
+        this.limitY = {
+            min: this.height - this.contentH,
+            max: 0
+        };
 
         this.mouseDownPos = {
             x: 0,
@@ -552,9 +546,6 @@ SXRender.prototype = {
         //objs list
         this.objs = [];
 
-        //time function
-        this._springTimeFun = calTimingFunctionBySpring(12, 180, 0);
-
         //animation
         this._animation = null; //动画
         this._contentVelcoity = { //内容滚动的速度
@@ -562,10 +553,6 @@ SXRender.prototype = {
             x: 0
         };
         this._frame = { //保存旧的鼠标坐标,用于获取速度
-            x: 0,
-            y: 0
-        };
-        this._targetPos = { //内容滑动后的目标位置
             x: 0,
             y: 0
         };
@@ -695,7 +682,7 @@ SXRender.prototype = {
      */
     reRender: function reRender() {
         this.clearCtx();
-        this.backgroundImg.content ? this.drawBackground() : '';
+        this.backgroundImg.content ? this.drawBackground() : null;
         this.ctx.setTransform(1, 0, 0, 1, this.contentOffset.x, this.contentOffset.y);
         var objs = this.objs || [];
         for (var i = 0, il = objs.length; i < il; i++) {
@@ -714,7 +701,8 @@ SXRender.prototype = {
                     break;
             }
         }
-        this.drawScrollBar ? this._drawProgress() : '';
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        // this.drawScrollBar?this._drawProgress():'';
     },
     findObjById: function findObjById(id) {
         for (var i = 0, il = this.objs.length; i < il; i++) {
@@ -732,7 +720,6 @@ SXRender.prototype = {
         this.objs.push(o);
     },
     _drawProgress: function _drawProgress() {
-        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
         var top, left, width, height, springOffsetY;
         springOffsetY = this.springOffset.y > 0 ? -this.springOffset.y : -2 * this.springOffset.y;
         width = 4;
@@ -769,25 +756,32 @@ function mouseDownHandler(e) {
         this.scratching = true;
 
         this._animation ? this._animation.stop() : null;
-        clearInterval(this._animation); //清除动画
+        // clearInterval(this._animation); //清除动画
         clearInterval(this._ticker);
 
         this._contentVelcoity.y = 0;
         this._contentVelcoity.x = 0;
 
         //跟踪鼠标，获取速度，50ms获取一次
-        this._timeStamp = Date.now();
-        this._frame.y = pos.y;
-        this._ticker = setInterval(function () {
-            var now, elapsed, delta, v;
-            now = Date.now();
-            elapsed = now - this._timeStamp;
-            this._timeStamp = now;
-            delta = this.mouseDownPos.y - this._frame.y;
+        if (this.scrollVEnabled || this.scrollHEnabled) {
+            this._timeStamp = Date.now();
             this._frame.y = this.mouseDownPos.y;
-            v = 1000 * delta / (1 + elapsed);
-            this._contentVelcoity.y = 0.8 * v + 0.2 * this._contentVelcoity.y;
-        }.bind(this), 50);
+            this._frame.x = this.mouseDownPos.x;
+            this._ticker = setInterval(function () {
+                var now, elapsed, delta, v;
+                now = Date.now();
+                elapsed = now - this._timeStamp;
+                this._timeStamp = now;
+                delta = this.mouseDownPos.y - this._frame.y;
+                v = 1000 * delta / (1 + elapsed);
+                this._contentVelcoity.y = 0.8 * v + 0.2 * this._contentVelcoity.y;
+                delta = this.mouseDownPos.x - this._frame.x;
+                v = 1000 * delta / (1 + elapsed);
+                this._contentVelcoity.x = 0.8 * v + 0.2 * this._contentVelcoity.x;
+                this._frame.y = this.mouseDownPos.y;
+                this._frame.x = this.mouseDownPos.x;
+            }.bind(this), 50);
+        }
     }
 }
 
@@ -798,49 +792,49 @@ function mouseDownHandler(e) {
  */
 function mouseUpHandler(e) {
     if (this.dragging) {
-
         this.dragging = false;
         this.selectObjId = 0;
     } else if (this.scratching) {
-
         //扒页面
         this.scratching = false;
-
         //清空速度计算的轮训
         clearInterval(this._ticker);
 
-        if (this.springOffset.y !== 0) {
-            this._animation ? this._animation.stop() : null;
-            var self = this;
-            this._animation = new SpringAnimation(null, '', 0, 12, 180, this.springOffset.y, 0, 2000);
-            this._animation.onFrameCB = function () {
-                self.springOffset.y = this.state.curValue;
-                self.reRender();
-            };
-            this._animation.start();
-        } else {
-            //开始惯性滚动
-            var amplitude;
-            if (this._contentVelcoity.y > 30 || this._contentVelcoity.y < -30) {
-                amplitude = 0.8 * this._contentVelcoity.y;
-                this._targetPos.y = Math.round(this.contentOffset.y + amplitude);
-                //开启动画
+        if (this.scrollVEnabled || this.scrollHEnabled) {
+            if (this.springOffset.y !== 0 || this.springOffset.x !== 0) {
+                //开启弹跳动画
                 var self = this;
-                this._animation = new InertialAnimation(null, '', this.contentOffset.y, this._targetPos.y, amplitude);
+                this._animation = new SpringAnimation(null, '', 0, 12, 180, this.springOffset, { x: 0, y: 0 }, 2000);
                 this._animation.onFrameCB = function () {
-                    //检查是否越界
-                    if (self.contentOffset.y > 0) {
-                        self.contentOffset.y = 0;
-                        self._animation.stop();
-                    } else if (self.contentOffset.y < self.height - self.contentH) {
-                        self.contentOffset.y = self.height - self.contentH;
-                        self._animation.stop();
-                    } else {
-                        self.contentOffset.y = this.state.curValue;
-                    }
+                    self.springOffset = this.state.curValue;
                     self.reRender();
                 };
                 this._animation.start();
+            } else {
+                //开始惯性滚动
+                var amplitude;
+                var targetPos = {};
+                if (this._contentVelcoity.y > 30 || this._contentVelcoity.y < -30) {
+                    amplitude = 0.8 * this._contentVelcoity.y;
+                    targetPos.y = Math.round(this.contentOffset.y + amplitude);
+                    //开启动画
+                    var self = this;
+                    this._animation = new InertialAnimation(null, '', this.contentOffset.y, targetPos.y, amplitude);
+                    this._animation.onFrameCB = function () {
+                        //检查是否越界
+                        if (self.contentOffset.y > 0) {
+                            self.contentOffset.y = 0;
+                            self._animation.stop();
+                        } else if (self.contentOffset.y < self.height - self.contentH) {
+                            self.contentOffset.y = self.height - self.contentH;
+                            self._animation.stop();
+                        } else {
+                            self.contentOffset.y = this.state.curValue;
+                        }
+                        self.reRender();
+                    };
+                    this._animation.start();
+                }
             }
         }
     }
@@ -874,34 +868,60 @@ function mouseMoveHandler(e) {
     } else if (this.scratching) {
         //扒动页面
 
-        diff.x = pos.x - this.mouseDownPos.x;
-        diff.y = pos.y - this.mouseDownPos.y;
+        if (this.scrollVEnabled || this.scrollHEnabled) {
+            diff.x = pos.x - this.mouseDownPos.x;
+            diff.y = pos.y - this.mouseDownPos.y;
+            if (this.scrollVEnabled) {
+                if (diff.y < 0) {
+                    //内容向上
+                    if (this.contentOffset.y <= this.limitY.min) {
+                        this.contentOffset.y = this.limitY.min;
+                        //到达下边缘
+                        this.springOffset.y = rubberBanding(diff.y, this.height);
+                    } else {
+                        this.mouseDownPos.y = pos.y;
+                        this.contentOffset.y += diff.y;
+                    }
+                } else {
+                    //内容向下
+                    if (this.contentOffset.y >= this.limitY.max) {
+                        //到达上边缘
+                        this.contentOffset.y = this.limitY.max;
+                        this.springOffset.y = rubberBanding(diff.y, this.height);
+                    } else {
+                        this.mouseDownPos.y = pos.y;
+                        this.contentOffset.y += diff.y;
+                    }
+                }
+            }
 
-        if (diff.y < 0) {
-            //内容向上
-            if (this.contentOffset.y <= this.height - this.contentH) {
-                this.contentOffset.y = Math.floor(this.height - this.contentH);
-                //到达下边缘
-                this.springOffset.y = rubberBanding(diff.y, this.height);
-            } else {
-                this.mouseDownPos.x = pos.x;
-                this.mouseDownPos.y = pos.y;
-                this.contentOffset.y += diff.y;
+            if (this.scrollHEnabled) {
+                if (diff.x < 0) {
+                    //内容向左
+                    if (this.contentOffset.x <= this.limitX.min) {
+                        //到达左边缘
+                        this.contentOffset.x = this.limitX.min;
+                        this.springOffset.x = rubberBanding(diff.x, this.width);
+                    } else {
+                        this.mouseDownPos.x = pos.x;
+                        // this.mouseDownPos.y = pos.y;
+                        this.contentOffset.x += diff.x;
+                    }
+                } else {
+                    //内容向右
+                    if (this.contentOffset.x >= this.limitX.max) {
+                        //到达右边缘
+                        this.contentOffset.x = this.limitX.max;
+                        this.springOffset.x = rubberBanding(diff.x, this.width);
+                    } else {
+                        this.mouseDownPos.x = pos.x;
+                        // this.mouseDownPos.y = pos.y;
+                        this.contentOffset.x += diff.x;
+                    }
+                }
             }
-        } else {
-            //内容向下
-            if (this.contentOffset.y >= 0) {
-                //到达上边缘
-                this.contentOffset.y = 0;
-                this.springOffset.y = rubberBanding(diff.y, this.height);
-            } else {
-                this.mouseDownPos.x = pos.x;
-                this.mouseDownPos.y = pos.y;
-                this.contentOffset.y += diff.y;
-            }
+            this.reRender();
         }
-
-        this.reRender();
     }
 }
 

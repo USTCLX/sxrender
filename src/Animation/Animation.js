@@ -3,7 +3,7 @@
  */
 
 import requestAnimationFrame from './requestAnimationFrame';
-import {timingFunctions,stateTypes,State,interpolateValue} from "./common"
+import {timingFunctions,stateTypes,State,interpolateNumber,interpolateObject} from "./common"
 
 
 
@@ -38,16 +38,17 @@ let Animation = function(target,key,startValue,stopValue,duration,opts){
     this._totalFrames = 0; //总帧数
     this._timeStep = 0;    //定时器间隔
     this._timeStamp = 0;   //开始动画时间戳
+
     this.init();
 };
 
-const coreStartHandler = function(){
+const coreAnimateHandler = function(){
     if(this.state.stateType!==stateTypes.running){
         return;
     }
 
     this._p = this.timingFun(this.state.curFrame/this._totalFrames);
-    this.state.curValue = interpolateValue(this.startValue,this.stopValue,this._p);
+    this.state.curValue = (typeof this.startValue!=='object')?interpolateNumber(this.startValue,this.stopValue,this._p):interpolateObject(this.startValue,this.stopValue,this._p);
 
     if(this.target.hasOwnProperty(this.key)){
         this.target[this.key] = this.state.curValue;
@@ -55,7 +56,7 @@ const coreStartHandler = function(){
 
     this.onFrameCB&&this.onFrameCB();
     if(this.state.curFrame<this._totalFrames){
-        requestAnimationFrame(coreStartHandler.bind(this),this._timeStep);
+        requestAnimationFrame(coreAnimateHandler.bind(this),this._timeStep);
     }else{
         this.stop();
     }
@@ -80,7 +81,7 @@ Animation.prototype = {
 
         setTimeout(function(){
             this.didStartCB&&this.didStartCB();
-            requestAnimationFrame(coreStartHandler.bind(this),this._timeStep);
+            requestAnimationFrame(coreAnimateHandler.bind(this),this._timeStep);
         }.bind(this),this.startDelay);
 
     },
@@ -89,6 +90,19 @@ Animation.prototype = {
         this.state.curValue = 0;
         this.state.curFrame = 0;
         this._totalFrames = 0;
+        this.didStopCB&&this.didStopCB();
+    },
+    pause:function(){
+        if(this.state.stateType===stateTypes.running){
+            this.state.stateType = stateTypes.paused;
+            this.didPauseCB&&this.didPauseCB();
+        }
+    },
+    resume:function(){
+        if(this.state.stateType===stateTypes.paused){
+            this.state.stateTypes = stateTypes.running;
+            requestAnimationFrame(coreAnimateHandler.bind(this),this._timeStep);
+        }
     }
 };
 

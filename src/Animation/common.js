@@ -51,8 +51,19 @@ function State(stateType,repeat,curFrame,curValue){
 }
 
 //插值
-function interpolateValue(startValue,stopValue,progress){
+function interpolateNumber(startValue,stopValue,progress){
     return Math.round(startValue+progress*(stopValue-startValue));
 }
 
-export {timingFunctions,stateTypes,State,interpolateValue}
+function interpolateObject(startObj,stopObj,progress){
+    var obj = Object.assign({},startObj);
+    for(var key in obj){
+        if(obj.hasOwnProperty(key)){
+            obj[key] = Math.round(startObj[key]+progress*(stopObj[key]-startObj[key]));
+        }
+    }
+    return obj;
+}
+
+
+export {timingFunctions,stateTypes,State,interpolateNumber,interpolateObject}
