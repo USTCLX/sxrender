@@ -342,22 +342,32 @@ function mouseUpHandler(e){
                 //开始惯性滚动
                 var amplitude = {};
                 var targetPos = {};
-                if(this._contentVelcoity.y>30||this._contentVelcoity.y<-30){
-                    amplitude = 0.8*this._contentVelcoity.y;
-                    targetPos.y = Math.round(this.contentOffset.y+amplitude);
+                var v = this._contentVelcoity;
+                if(v.y>30||v.y<-30||v.x>30||v.x<-30){
+                    amplitude.x = (v.x<-30||v.x>30)?0.8*v.x:0;
+                    amplitude.y = (v.y<-30||v.y>30)?0.8*v.y:0;
+                    targetPos.x = Math.round(this.contentOffset.x+amplitude.x);
+                    targetPos.y = Math.round(this.contentOffset.y+amplitude.y);
                     //开启动画
                     var self = this;
-                    this._animation= new InertialAnimation(null,'',this.contentOffset.y,targetPos.y,amplitude);
+                    this._animation= new InertialAnimation(null,'',this.contentOffset,targetPos,amplitude);
                     this._animation.onFrameCB = function(){
                         //检查是否越界
-                        if(self.contentOffset.y>0){
-                            self.contentOffset.y = 0;
-                            self._animation.stop();
-                        }else if(self.contentOffset.y<(self.height-self.contentH)){
-                            self.contentOffset.y = self.height-self.contentH;
-                            self._animation.stop();
-                        }else{
-                            self.contentOffset.y = this.state.curValue;
+                        var xFlag = false;
+                        var yFlag = false;
+                        var c;
+                        self.contentOffset = this.state.curValue;
+                        c = self.contentOffset;
+                        if(c.x>self.limitX.max||c.x<self.limitX.min){
+                            c.x = (c.x>self.limitX.max)?self.limitX.max:self.limitX.min;
+                            xFlag = true;
+                        }
+                        if(c.y>self.limitY.max||c.y<self.limitY.min){
+                            c.y = (c.y>self.limitY.max)?self.limitY.max:self.limitY.min;
+                            yFlag = true;
+                        }
+                        if(xFlag&&yFlag){
+                            this.stop();
                         }
                         self.reRender();
                     };
