@@ -1,5 +1,5 @@
 import Animation from './Animation';
-import {stateTypes, interpolateNumber, interpolateObject} from "./common";
+import {stateTypes, valueTypes,interpolateNumber, interpolateObject} from "./common";
 import requestAnimationFrame from './requestAnimationFrame';
 
 /**
@@ -75,7 +75,13 @@ const springAnimateHandler = function(){
         return;
     }
     this._p = this.timingFun(this.state.curFrame/this._totalFrames);
-    this.state.curValue = (typeof this.startValue!=='object')?interpolateNumber(this.startValue,this.stopValue,this._p):interpolateObject(this.startValue,this.stopValue,this._p);
+
+    if(this.startX===0){
+        this.state.curValue = (this._valueType!==valueTypes.object)?interpolateNumber(this.startValue,this.stopValue,this._p):interpolateObject(this.startValue,this.stopValue,this._p);
+    }else if(this.startX===1){
+        //在平衡位置，以一个初速度开始弹跳
+        this.state.curValue = this._p-1;
+    }
 
     if(this.target&&this.target.hasOwnProperty(this.key)){
         this.target[this.key] = this.state.curValue;
@@ -85,7 +91,8 @@ const springAnimateHandler = function(){
     if(this.state.curFrame<this._totalFrames){
         requestAnimationFrame(springAnimateHandler.bind(this),this._timeStep);
     }else{
-        this.state.curFrame = this.stopValue;
+        this.state.curValue = this.stopValue;
+        this.didStopCB&&this.didStopCB();
         this.stop();
     }
     this.state.curFrame++;

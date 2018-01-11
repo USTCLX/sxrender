@@ -340,36 +340,46 @@ function mouseUpHandler(e){
                 this._animation.start();
             }else{
                 //开始惯性滚动
-                var amplitude = {};
-                var targetPos = {};
-                var v = this._contentVelcoity;
+                var amplitude = {},
+                    targetPos = {},
+                    v = this._contentVelcoity;
                 if(v.y>30||v.y<-30||v.x>30||v.x<-30){
                     amplitude.x = (v.x<-30||v.x>30)?0.8*v.x:0;
                     amplitude.y = (v.y<-30||v.y>30)?0.8*v.y:0;
                     targetPos.x = Math.round(this.contentOffset.x+amplitude.x);
                     targetPos.y = Math.round(this.contentOffset.y+amplitude.y);
-                    //开启动画
+                    //开启惯性滚动动画
                     var self = this;
                     this._animation= new InertialAnimation(null,'',this.contentOffset,targetPos,amplitude);
                     this._animation.onFrameCB = function(){
                         //检查是否越界
-                        var xFlag = false;
-                        var yFlag = false;
-                        var c;
+                        var c,vx=0,vy=0;               //碰撞到边缘时，x，y方向上的即时速度
                         self.contentOffset = this.state.curValue;
                         c = self.contentOffset;
                         if(c.x>self.limitX.max||c.x<self.limitX.min){
                             c.x = (c.x>self.limitX.max)?self.limitX.max:self.limitX.min;
-                            xFlag = true;
+                            vx = (this.state.curValue.x-this.lastState.curValue.x)/(Date.now()-this._lastTimeStamp)*1000;
+                            this.stop();
                         }
                         if(c.y>self.limitY.max||c.y<self.limitY.min){
                             c.y = (c.y>self.limitY.max)?self.limitY.max:self.limitY.min;
-                            yFlag = true;
-                        }
-                        if(xFlag&&yFlag){
+                            vy = (this.state.curValue.y-this.lastState.curValue.y)/(Date.now()-this._lastTimeStamp)*1000;
                             this.stop();
                         }
                         self.reRender();
+                        if(Math.abs(vx)>50||Math.abs(vy)>50&&(!(vx&&vy))){
+                            //需要开启spring弹簧动画,只有在单方向是开启
+                            self._animation = new SpringAnimation(null,'',vy,20,180,0,0,2000,1);
+                            self._animation.onFrameCB = function(){
+                                self.springOffset.y = this.state.curValue;
+                                self.reRender();
+                            };
+                            self._animation.didStopCB = function(){
+                                self.springOffset.y = this.state.curValue;
+                                self.reRender();
+                            };
+                            self._animation.start();
+                        }
                     };
                     this._animation.start();
                 }

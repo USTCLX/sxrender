@@ -96,6 +96,40 @@ var genGUID = function genGUID() {
 };
 
 /**
+ * 深拷贝
+ */
+var deepClone = function deepClone(values) {
+    var copy;
+    if (null === values || "object" !== (typeof values === 'undefined' ? 'undefined' : _typeof(values))) {
+        return values;
+    }
+
+    if (values instanceof Date) {
+        copy = new Date();
+        copy.setTime(values.getTime());
+        return copy;
+    }
+
+    if (values instanceof Array) {
+        copy = [];
+        for (var i = 0, len = values.length; i < len; i++) {
+            copy[i] = deepClone(values[i]);
+        }
+        return copy;
+    }
+
+    if (values instanceof Object) {
+        copy = {};
+        for (var key in values) {
+            if (values.hasOwnProperty(key)) {
+                copy[key] = deepClone(values[key]);
+            }
+        }
+        return copy;
+    }
+};
+
+/**
  * Created by lixiang on 2018/1/8.
  */
 
@@ -187,6 +221,12 @@ var stateTypes = {
     paused: 'paused'
 };
 
+var valueTypes = {
+    number: 'number',
+    string: 'string',
+    object: 'object'
+};
+
 //状态构造器
 function State(stateType, repeat, curFrame, curValue) {
     this.stateType = stateType || stateTypes.idle;
@@ -200,6 +240,7 @@ function interpolateNumber(startValue, stopValue, progress) {
     return Math.round(startValue + progress * (stopValue - startValue));
 }
 
+//对象插值
 function interpolateObject(startObj, stopObj, progress) {
     var obj = Object.assign({}, startObj);
     for (var key in obj) {
@@ -243,7 +284,9 @@ var Animation = function Animation(target, key, startValue, stopValue, duration,
     this._p = 0; //进度
     this._totalFrames = 0; //总帧数
     this._timeStep = 0; //定时器间隔
-    this._timeStamp = 0; //开始动画时间戳
+    this._timeStamp = 0; //开始动画事件戳
+    this._lastTimeStamp = 0; //动画帧时间戳
+    this._valueType = valueTypes.number;
 
     this.init();
 };
@@ -254,16 +297,23 @@ var coreAnimateHandler = function coreAnimateHandler() {
     }
 
     this._p = this.timingFun(this.state.curFrame / this._totalFrames);
-    this.state.curValue = _typeof(this.startValue) !== 'object' ? interpolateNumber(this.startValue, this.stopValue, this._p) : interpolateObject(this.startValue, this.stopValue, this._p);
+
+    this.state.curValue = this._valueType !== valueTypes.object ? interpolateNumber(this.startValue, this.stopValue, this._p) : interpolateObject(this.startValue, this.stopValue, this._p);
 
     if (this.target.hasOwnProperty(this.key)) {
         this.target[this.key] = this.state.curValue;
     }
 
     this.onFrameCB && this.onFrameCB();
+
+    this.lastState = deepClone(this.state);
+    this._lastTimeStamp = Date.now();
+
     if (this.state.curFrame < this._totalFrames) {
         requestAnimationFrame(coreAnimateHandler.bind(this), this._timeStep);
     } else {
+        this.state.curValue = this.stopValue;
+        this.didStopCB && this.didStopCB();
         this.stop();
     }
 
@@ -277,6 +327,19 @@ Animation.prototype = {
         this._totalFrames = this.duration / 1000 * this.fps;
         //计算定时器间隔
         this._timeStep = Math.round(1 / this.fps);
+        //判断valueType
+        switch (_typeof(this.startValue)) {
+            case 'object':
+                this._valueType = valueTypes.object;
+                break;
+            case 'number':
+                this._valueType = valueTypes.number;
+                break;
+            default:
+                break;
+        }
+        //state curValue
+        this.state.curValue = deepClone(this.startValue);
     },
     start: function start() {
         if (this.state.stateType !== stateTypes.idle) {
@@ -287,6 +350,8 @@ Animation.prototype = {
 
         setTimeout(function () {
             this.didStartCB && this.didStartCB();
+            this._lastTimeStamp = Date.now();
+            this.lastState = deepClone(this.state);
             requestAnimationFrame(coreAnimateHandler.bind(this), this._timeStep);
         }.bind(this), this.startDelay);
     },
@@ -382,7 +447,13 @@ var springAnimateHandler = function springAnimateHandler() {
         return;
     }
     this._p = this.timingFun(this.state.curFrame / this._totalFrames);
-    this.state.curValue = _typeof(this.startValue) !== 'object' ? interpolateNumber(this.startValue, this.stopValue, this._p) : interpolateObject(this.startValue, this.stopValue, this._p);
+
+    if (this.startX === 0) {
+        this.state.curValue = this._valueType !== valueTypes.object ? interpolateNumber(this.startValue, this.stopValue, this._p) : interpolateObject(this.startValue, this.stopValue, this._p);
+    } else if (this.startX === 1) {
+        //在平衡位置，以一个初速度开始弹跳
+        this.state.curValue = this._p - 1;
+    }
 
     if (this.target && this.target.hasOwnProperty(this.key)) {
         this.target[this.key] = this.state.curValue;
@@ -392,7 +463,8 @@ var springAnimateHandler = function springAnimateHandler() {
     if (this.state.curFrame < this._totalFrames) {
         requestAnimationFrame(springAnimateHandler.bind(this), this._timeStep);
     } else {
-        this.state.curFrame = this.stopValue;
+        this.state.curValue = this.stopValue;
+        this.didStopCB && this.didStopCB();
         this.stop();
     }
     this.state.curFrame++;
@@ -430,15 +502,39 @@ var inertialAnimateHandler = function inertialAnimateHandler() {
         return;
     }
 
-    state.curValue = calInertialValue(this.stopValue, this.amplitude, elapsed);
-    if (Math.abs(this.stopValue - state.curValue) < 1) {
-        state.curValue = this.stopValue;
-        this.onFrameCB && this.onFrameCB();
-        this.stop();
-    } else {
-        this.onFrameCB && this.onFrameCB();
-        requestAnimationFrame(inertialAnimateHandler.bind(this), this._timeStep);
+    state.curValue = calInertialValue(this.stopValue, this.amplitude, elapsed, this._valueType);
+    if (this._valueType === valueTypes.object) {
+        var len = 0;
+        var i = 0;
+        for (var key in state.curValue) {
+            if (state.curValue.hasOwnProperty(key)) {
+                len++;
+                if (Math.abs(this.stopValue[key] - state.curValue[key]) < 1) {
+                    i++;
+                    state.curValue[key] = this.stopValue[key];
+                }
+            }
+        }
+        if (i === len) {
+            //所有属性都已达到临界值
+            this.onFrameCB && this.onFrameCB();
+            this.stop();
+            return;
+        }
+    } else if (this._valueType === valueTypes.number) {
+        if (Math.abs(this.stopValue - state.curValue) < 1) {
+            state.curValue = this.stopValue;
+            this.onFrameCB && this.onFrameCB();
+            this.stop();
+            return;
+        }
     }
+
+    this.onFrameCB && this.onFrameCB();
+
+    this._lastTimeStamp = Date.now();
+    this.lastState = deepClone(this.state);
+    requestAnimationFrame(inertialAnimateHandler.bind(this), this._timeStep);
 };
 
 /**
@@ -448,10 +544,10 @@ var inertialAnimateHandler = function inertialAnimateHandler() {
  * 返回值为y(t)
  */
 
-var calInertialValue = function calInertialValue(target, amplitude, elapsed) {
+var calInertialValue = function calInertialValue(target, amplitude, elapsed, valueType) {
     var timeConstant = 500;
 
-    if ((typeof target === 'undefined' ? 'undefined' : _typeof(target)) === 'object') {
+    if (valueType === valueTypes.object) {
         var obj = {};
         for (var key in target) {
             if (target.hasOwnProperty(key)) {
@@ -468,9 +564,6 @@ var calInertialValue = function calInertialValue(target, amplitude, elapsed) {
 InertialAnimation.prototype = Object.create(Animation.prototype);
 Object.assign(InertialAnimation.prototype, {
     constructor: InertialAnimation,
-    init: function init() {
-        this._timeStep = 1 / this.fps;
-    },
     start: function start() {
         if (this.state.stateType !== stateTypes.idle) {
             return;
@@ -481,6 +574,8 @@ Object.assign(InertialAnimation.prototype, {
         setTimeout(function () {
             this.didStartCB && this.didStartCB();
             this._timeStamp = Date.now();
+            this._lastTimeStamp = Date.now();
+            this.lastState = deepClone(this.state);
             requestAnimationFrame(inertialAnimateHandler.bind(this), this._timeStep);
         }.bind(this), this.startDelay);
     }
@@ -822,36 +917,48 @@ function mouseUpHandler(e) {
                 this._animation.start();
             } else {
                 //开始惯性滚动
-                var amplitude = {};
-                var targetPos = {};
-                var v = this._contentVelcoity;
+                var amplitude = {},
+                    targetPos = {},
+                    v = this._contentVelcoity;
                 if (v.y > 30 || v.y < -30 || v.x > 30 || v.x < -30) {
                     amplitude.x = v.x < -30 || v.x > 30 ? 0.8 * v.x : 0;
                     amplitude.y = v.y < -30 || v.y > 30 ? 0.8 * v.y : 0;
                     targetPos.x = Math.round(this.contentOffset.x + amplitude.x);
                     targetPos.y = Math.round(this.contentOffset.y + amplitude.y);
-                    //开启动画
+                    //开启惯性滚动动画
                     var self = this;
                     this._animation = new InertialAnimation(null, '', this.contentOffset, targetPos, amplitude);
                     this._animation.onFrameCB = function () {
                         //检查是否越界
-                        var xFlag = false;
-                        var yFlag = false;
-                        var c;
+                        var c,
+                            vx = 0,
+                            vy = 0; //碰撞到边缘时，x，y方向上的即时速度
                         self.contentOffset = this.state.curValue;
                         c = self.contentOffset;
                         if (c.x > self.limitX.max || c.x < self.limitX.min) {
                             c.x = c.x > self.limitX.max ? self.limitX.max : self.limitX.min;
-                            xFlag = true;
+                            vx = (this.state.curValue.x - this.lastState.curValue.x) / (Date.now() - this._lastTimeStamp) * 1000;
+                            this.stop();
                         }
                         if (c.y > self.limitY.max || c.y < self.limitY.min) {
                             c.y = c.y > self.limitY.max ? self.limitY.max : self.limitY.min;
-                            yFlag = true;
-                        }
-                        if (xFlag && yFlag) {
+                            vy = (this.state.curValue.y - this.lastState.curValue.y) / (Date.now() - this._lastTimeStamp) * 1000;
                             this.stop();
                         }
                         self.reRender();
+                        if (Math.abs(vx) > 50 || Math.abs(vy) > 50 && !(vx && vy)) {
+                            //需要开启spring弹簧动画,只有在单方向是开启
+                            self._animation = new SpringAnimation(null, '', vy, 20, 180, 0, 0, 2000, 1);
+                            self._animation.onFrameCB = function () {
+                                self.springOffset.y = this.state.curValue;
+                                self.reRender();
+                            };
+                            self._animation.didStopCB = function () {
+                                self.springOffset.y = this.state.curValue;
+                                self.reRender();
+                            };
+                            self._animation.start();
+                        }
                     };
                     this._animation.start();
                 }

@@ -42,6 +42,12 @@ const stateTypes = {
     paused:'paused'
 };
 
+const valueTypes = {
+    number:'number',
+    string:'string',
+    object:'object'
+};
+
 //状态构造器
 function State(stateType,repeat,curFrame,curValue){
     this.stateType = stateType || stateTypes.idle;
@@ -55,6 +61,7 @@ function interpolateNumber(startValue,stopValue,progress){
     return Math.round(startValue+progress*(stopValue-startValue));
 }
 
+//对象插值
 function interpolateObject(startObj,stopObj,progress){
     var obj = Object.assign({},startObj);
     for(var key in obj){
@@ -66,4 +73,5 @@ function interpolateObject(startObj,stopObj,progress){
 }
 
 
-export {timingFunctions,stateTypes,State,interpolateNumber,interpolateObject}
+
+export {timingFunctions,stateTypes,valueTypes,State,interpolateNumber,interpolateObject}

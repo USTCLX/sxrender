@@ -118,4 +118,4 @@ const deepClone = function(values){
     }
 };
 
-export {getRelativeRect,rubberBanding,checkClickElm,genGUID};
+export {getRelativeRect,rubberBanding,checkClickElm,genGUID,deepClone};

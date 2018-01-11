@@ -3,8 +3,8 @@
  */
 
 import requestAnimationFrame from './requestAnimationFrame';
-import {timingFunctions,stateTypes,State,interpolateNumber,interpolateObject} from "./common"
-
+import {timingFunctions,stateTypes,valueTypes,State,interpolateNumber,interpolateObject} from "./common"
+import {deepClone} from '../utils/utils';
 
 
 
@@ -37,7 +37,9 @@ let Animation = function(target,key,startValue,stopValue,duration,opts){
     this._p = 0;           //进度
     this._totalFrames = 0; //总帧数
     this._timeStep = 0;    //定时器间隔
-    this._timeStamp = 0;   //开始动画时间戳
+    this._timeStamp = 0;   //开始动画事件戳
+    this._lastTimeStamp = 0; //动画帧时间戳
+    this._valueType = valueTypes.number;
 
     this.init();
 };
@@ -48,16 +50,23 @@ const coreAnimateHandler = function(){
     }
 
     this._p = this.timingFun(this.state.curFrame/this._totalFrames);
-    this.state.curValue = (typeof this.startValue!=='object')?interpolateNumber(this.startValue,this.stopValue,this._p):interpolateObject(this.startValue,this.stopValue,this._p);
+
+    this.state.curValue = (this._valueType!==valueTypes.object)?interpolateNumber(this.startValue,this.stopValue,this._p):interpolateObject(this.startValue,this.stopValue,this._p);
 
     if(this.target.hasOwnProperty(this.key)){
         this.target[this.key] = this.state.curValue;
     }
 
     this.onFrameCB&&this.onFrameCB();
+
+    this.lastState = deepClone(this.state);
+    this._lastTimeStamp = Date.now();
+
     if(this.state.curFrame<this._totalFrames){
         requestAnimationFrame(coreAnimateHandler.bind(this),this._timeStep);
     }else{
+        this.state.curValue = this.stopValue;
+        this.didStopCB&&this.didStopCB();
         this.stop();
     }
 
@@ -71,6 +80,19 @@ Animation.prototype = {
         this._totalFrames = this.duration/1000*this.fps;
         //计算定时器间隔
         this._timeStep = Math.round(1/this.fps);
+        //判断valueType
+        switch (typeof this.startValue){
+            case 'object':
+                this._valueType = valueTypes.object;
+                break;
+            case 'number':
+                this._valueType = valueTypes.number;
+                break;
+            default:
+                break
+        };
+        //state curValue
+        this.state.curValue = deepClone(this.startValue);
     },
     start:function(){
         if(this.state.stateType!==stateTypes.idle){
@@ -81,6 +103,8 @@ Animation.prototype = {
 
         setTimeout(function(){
             this.didStartCB&&this.didStartCB();
+            this._lastTimeStamp = Date.now();
+            this.lastState = deepClone(this.state);
             requestAnimationFrame(coreAnimateHandler.bind(this),this._timeStep);
         }.bind(this),this.startDelay);
 

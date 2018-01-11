@@ -21,19 +21,12 @@ window.onload = function(){
     	id:'c',
     	w:300,
     	h:500,
-    	contentW:500,
+    	contentW:300,
     	contentH:2000,
     	backgroundColor:'rgb(159,192,234)',
     	drawScrollBar:true
     });
 
-
-    // var backgroundImg = new Image();
-    // backgroundImg.onload = function(){
-    // 	paintBoard2.drawBackground({imgObj:backgroundImg})
-    // };
-    //
-    // backgroundImg.src = '../public/img.jpg'
 
     
     var paintBoardImg = new Image();
