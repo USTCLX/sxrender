@@ -21,7 +21,7 @@ window.onload = function(){
     	id:'c',
     	w:300,
     	h:500,
-    	contentW:300,
+    	contentW:600,
     	contentH:2000,
     	backgroundColor:'rgb(159,192,234)',
     	drawScrollBar:true

@@ -230,8 +230,15 @@ SXRender.prototype = {
             }
         }
         this.ctx.setTransform(1,0,0,1,0,0);
-        // this.drawScrollBar?this._drawProgress():'';
+        if(this.scrollHEnabled||this.scrollVEnabled&&this.drawScrollBar){
+            this._drawProgress();
+        }
     },
+    /**
+     * 寻找物体
+     * @param id
+     * @returns {*}
+     */
     findObjById:function(id){
         for(var i=0,il=this.objs.length;i<il;i++){
             if(this.objs[i].id===id){
@@ -240,6 +247,10 @@ SXRender.prototype = {
         }
         return null;
     },
+    /**
+     * 增加物体
+     * @param obj
+     */
     add:function(obj){
         var o = {};
         o = Object.assign(o,obj,{
@@ -247,22 +258,39 @@ SXRender.prototype = {
         });
         this.objs.push(o);
     },
+    /**
+     * 绘制进度条
+     * @private
+     */
     _drawProgress:function() {
-        var top,left,width,height,springOffsetY;
-        springOffsetY = (this.springOffset.y>0)?-this.springOffset.y:(-2*this.springOffset.y);
-        width = 4;
-        height  = Math.round((this.height*this.height)/this.contentH)-Math.abs(this.springOffset.y);
-        height = (height<10)?10:height;
-        top = Math.round((-this.contentOffset.y*(this.height))/this.contentH)+springOffsetY;
-        left = this.width-width;
+        var top,left,width,height ;
 
-        this.drawRect({
-            x:left,
-            y:top,
-            w:width,
-            h:height,
-            color:'#888888'
-        })
+        if(this.scrollVEnabled){
+            width = 4;
+            height  = Math.round((this.height*this.height)/this.contentH)-Math.abs(this.springOffset.y);
+            height = (height<10)?10:height;
+            top = Math.round((-this.contentOffset.y*(this.height))/this.contentH);
+            left = this.width-width;
+
+            this.ctx.save();
+            this.ctx.fillStyle = '#888888';
+            this.ctx.fillRect(left, top, width, height);
+            this.ctx.restore();
+        }
+
+        if(this.scrollHEnabled){
+            width = Math.round((this.width*this.width)/this.contentW)-Math.abs(this.springOffset.x);
+            width = (width<10)?10:width;
+            height = 4;
+
+            top = this.height-height;
+            left = Math.round((-this.contentOffset.x*(this.width))/this.contentW)-this.springOffset.x;
+            this.ctx.save();
+            this.ctx.fillStyle = '#888888';
+            this.ctx.fillRect(left, top, width, height);
+            this.ctx.restore();
+        }
+
     }
 };
 
@@ -369,16 +397,30 @@ function mouseUpHandler(e){
                         self.reRender();
                         if(Math.abs(vx)>50||Math.abs(vy)>50&&(!(vx&&vy))){
                             //需要开启spring弹簧动画,只有在单方向是开启
-                            self._animation = new SpringAnimation(null,'',vy,20,180,0,0,2000,1);
-                            self._animation.onFrameCB = function(){
-                                self.springOffset.y = this.state.curValue;
-                                self.reRender();
-                            };
-                            self._animation.didStopCB = function(){
-                                self.springOffset.y = this.state.curValue;
-                                self.reRender();
-                            };
-                            self._animation.start();
+                            if(Math.abs(vy)>50){
+                                self._animation = new SpringAnimation(null,'',vy,20,180,0,0,2000,1);
+                                self._animation.onFrameCB = function(){
+                                    self.springOffset.y = this.state.curValue;
+                                    self.reRender();
+                                };
+                                self._animation.didStopCB = function(){
+                                    self.springOffset.y = this.state.curValue;
+                                    self.reRender();
+                                };
+                                self._animation.start();
+                            }else if(Math.abs(vx)>50){
+                                self._animation = new SpringAnimation(null,'',vx,20,180,0,0,2000,1);
+                                self._animation.onFrameCB = function(){
+                                    self.springOffset.x = this.state.curValue;
+                                    self.reRender();
+                                };
+                                self._animation.didStopCB = function(){
+                                    self.springOffset.x = this.state.curValue;
+                                    self.reRender();
+                                };
+                                self._animation.start();
+                            }
+
                         }
                     };
                     this._animation.start();
