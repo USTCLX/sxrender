@@ -387,15 +387,16 @@ function mouseUpHandler(e){
                         if(c.x>self.limitX.max||c.x<self.limitX.min){
                             c.x = (c.x>self.limitX.max)?self.limitX.max:self.limitX.min;
                             vx = (this.state.curValue.x-this.lastState.curValue.x)/(Date.now()-this._lastTimeStamp)*1000;
-                            this.stop();
+                            // this.stop();
                         }
                         if(c.y>self.limitY.max||c.y<self.limitY.min){
                             c.y = (c.y>self.limitY.max)?self.limitY.max:self.limitY.min;
                             vy = (this.state.curValue.y-this.lastState.curValue.y)/(Date.now()-this._lastTimeStamp)*1000;
-                            this.stop();
+                            // this.stop();
                         }
                         self.reRender();
                         if(Math.abs(vx)>50||Math.abs(vy)>50&&(!(vx&&vy))){
+                            this.stop();
                             //需要开启spring弹簧动画,只有在单方向是开启
                             if(Math.abs(vy)>50){
                                 self._animation = new SpringAnimation(null,'',vy,20,180,0,0,2000,1);
