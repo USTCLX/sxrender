@@ -263,13 +263,15 @@ SXRender.prototype = {
      * @private
      */
     _drawProgress:function() {
-        var top,left,width,height ;
+        var top,left,width,height,offset;
 
         if(this.scrollVEnabled){
             width = 4;
             height  = Math.round((this.height*this.height)/this.contentH)-Math.abs(this.springOffset.y);
             height = (height<10)?10:height;
-            top = Math.round((-this.contentOffset.y*(this.height))/this.contentH);
+            offset = (this.springOffset.y<0)?this.springOffset.y:0;
+            top = Math.round((-this.contentOffset.y*(this.height))/this.contentH)-offset;
+            top = top>(this.height-10)?(this.height-10):top;
             left = this.width-width;
 
             this.ctx.save();
@@ -284,7 +286,8 @@ SXRender.prototype = {
             height = 4;
 
             top = this.height-height;
-            left = Math.round((-this.contentOffset.x*(this.width))/this.contentW)-this.springOffset.x;
+            offset = (this.springOffset.x<0)?this.springOffset.x:0;
+            left = Math.round((-this.contentOffset.x*(this.width))/this.contentW)-offset;
             this.ctx.save();
             this.ctx.fillStyle = '#888888';
             this.ctx.fillRect(left, top, width, height);
