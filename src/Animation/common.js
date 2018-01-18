@@ -57,21 +57,27 @@ function State(stateType,repeat,curFrame,curValue){
 }
 
 //插值
-function interpolateNumber(startValue,stopValue,progress){
-    return Math.round(startValue+progress*(stopValue-startValue));
+function interpolateNumber(startValue,stopValue,progress,needReverse){
+    if(needReverse){
+        return Math.round(stopValue+progress*(startValue-stopValue));
+    }else{
+        return Math.round(startValue+progress*(stopValue-startValue));
+    }
 }
 
 //对象插值
-function interpolateObject(startObj,stopObj,progress){
+function interpolateObject(startObj,stopObj,progress,needReverse){
     var obj = Object.assign({},startObj);
     for(var key in obj){
         if(obj.hasOwnProperty(key)){
-            obj[key] = Math.round(startObj[key]+progress*(stopObj[key]-startObj[key]));
+            if(needReverse){
+                obj[key] = Math.round(stopObj[key]+progress*(startObj[key]-stopObj[key]));
+            }else{
+                obj[key] = Math.round(startObj[key]+progress*(stopObj[key]-startObj[key]));
+            }
         }
     }
     return obj;
 }
-
-
 
 export {timingFunctions,stateTypes,valueTypes,State,interpolateNumber,interpolateObject}

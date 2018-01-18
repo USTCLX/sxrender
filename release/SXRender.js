@@ -269,16 +269,24 @@ function State(stateType, repeat, curFrame, curValue) {
 }
 
 //插值
-function interpolateNumber(startValue, stopValue, progress) {
-    return Math.round(startValue + progress * (stopValue - startValue));
+function interpolateNumber(startValue, stopValue, progress, needReverse) {
+    if (needReverse) {
+        return Math.round(stopValue + progress * (startValue - stopValue));
+    } else {
+        return Math.round(startValue + progress * (stopValue - startValue));
+    }
 }
 
 //对象插值
-function interpolateObject(startObj, stopObj, progress) {
+function interpolateObject(startObj, stopObj, progress, needReverse) {
     var obj = Object.assign({}, startObj);
     for (var key in obj) {
         if (obj.hasOwnProperty(key)) {
-            obj[key] = Math.round(startObj[key] + progress * (stopObj[key] - startObj[key]));
+            if (needReverse) {
+                obj[key] = Math.round(stopObj[key] + progress * (startObj[key] - stopObj[key]));
+            } else {
+                obj[key] = Math.round(startObj[key] + progress * (stopObj[key] - startObj[key]));
+            }
         }
     }
     return obj;
@@ -297,7 +305,7 @@ var Animation = function Animation(target, key, startValue, stopValue, duration,
     this.stopValue = stopValue;
     this.duration = duration;
 
-    this.fps = opts.fps || 30;
+    this.fps = opts.fps || 60;
     this.startDelay = opts.startDelay || 0;
     this.autoReverse = opts.autoReverse || false;
     this.repeatCount = opts.repeatCount || 1;
@@ -319,7 +327,8 @@ var Animation = function Animation(target, key, startValue, stopValue, duration,
     this._timeStep = 0; //定时器间隔
     this._timeStamp = 0; //开始动画事件戳
     this._lastTimeStamp = 0; //动画帧时间戳
-    this._curRepeat = 0;
+    this._curRepeat = 0; //当前重复序号
+    this._isReverseState = false;
     this._valueType = valueTypes.number;
 
     this.init();
@@ -332,7 +341,7 @@ var coreAnimateHandler = function coreAnimateHandler() {
 
     this._p = this.timingFun(this.state.curFrame / this._totalFrames);
 
-    this.state.curValue = this._valueType !== valueTypes.object ? interpolateNumber(this.startValue, this.stopValue, this._p) : interpolateObject(this.startValue, this.stopValue, this._p);
+    this.state.curValue = this._valueType !== valueTypes.object ? interpolateNumber(this.startValue, this.stopValue, this._p, this._isReverseState) : interpolateObject(this.startValue, this.stopValue, this._p, this._isReverseState);
 
     if (this.target && this.target.hasOwnProperty(this.key)) {
         this.target[this.key] = this.state.curValue;
@@ -346,16 +355,19 @@ var coreAnimateHandler = function coreAnimateHandler() {
     if (this.state.curFrame < this._totalFrames) {
         //执行动画
         requestAnimationFrame(coreAnimateHandler.bind(this), this._timeStep);
-    } else if (this.autoReverse) {
-        //
-    } else if (this._curRepeat > 0) {
+    } else if (this.autoReverse && !this._isReverseState) {
+        //自动回溯
+        this._isReverseState = true;
+        this.state.curFrame = 0;
+        requestAnimationFrame(coreAnimateHandler.bind(this), this._timeStep);
+    } else if (this._curRepeat - 1 > 0) {
         //重复动画
         this._curRepeat--;
         this.state.curFrame = 0;
+        this._isReverseState = false;
         requestAnimationFrame(coreAnimateHandler.bind(this), this._timeStep);
     } else {
         this.state.curValue = this.stopValue;
-        this.didStopCB && this.didStopCB();
         this.stop();
     }
 
@@ -368,7 +380,7 @@ Animation.prototype = {
         //计算总帧数
         this._totalFrames = this.duration / 1000 * this.fps;
         //计算定时器间隔
-        this._timeStep = Math.round(1 / this.fps);
+        this._timeStep = Math.round(1000 / this.fps);
         //当前重复次数
         this._curRepeat = this.repeatCount;
         //判断valueType
@@ -403,7 +415,9 @@ Animation.prototype = {
         this.state.stateType = stateTypes.idle;
         this.state.curValue = 0;
         this.state.curFrame = 0;
+
         this._totalFrames = 0;
+        this._isReverseState = false;
         this.didStopCB && this.didStopCB();
     },
     pause: function pause() {
@@ -419,12 +433,6 @@ Animation.prototype = {
         }
     }
 };
-
-var animator = new Animation(null, '', 0, 100, 1000, { repeatCount: 2 });
-animator.onFrameCB = function () {
-    console.log(this.state.curFrame);
-};
-animator.start();
 
 /**
  * 根据阻尼系数，弹力系数，初始速度，初始位置信息，计算出进度p关于时间t的函数
