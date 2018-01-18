@@ -17,7 +17,7 @@ let Animation = function(target,key,startValue,stopValue,duration,opts){
     this.stopValue = stopValue;
     this.duration = duration;
 
-    this.fps = opts.fps||60;
+    this.fps = opts.fps||30;
     this.startDelay = opts.startDelay||0;
     this.autoReverse = opts.autoReverse||false;
     this.repeatCount = opts.repeatCount||1;
@@ -39,6 +39,7 @@ let Animation = function(target,key,startValue,stopValue,duration,opts){
     this._timeStep = 0;    //定时器间隔
     this._timeStamp = 0;   //开始动画事件戳
     this._lastTimeStamp = 0; //动画帧时间戳
+    this._curRepeat = 0;
     this._valueType = valueTypes.number;
 
     this.init();
@@ -53,7 +54,7 @@ const coreAnimateHandler = function(){
 
     this.state.curValue = (this._valueType!==valueTypes.object)?interpolateNumber(this.startValue,this.stopValue,this._p):interpolateObject(this.startValue,this.stopValue,this._p);
 
-    if(this.target.hasOwnProperty(this.key)){
+    if(this.target&&this.target.hasOwnProperty(this.key)){
         this.target[this.key] = this.state.curValue;
     }
 
@@ -62,7 +63,17 @@ const coreAnimateHandler = function(){
     this.lastState = deepClone(this.state);
     this._lastTimeStamp = Date.now();
 
+
     if(this.state.curFrame<this._totalFrames){
+        //执行动画
+        requestAnimationFrame(coreAnimateHandler.bind(this),this._timeStep);
+    }else if(this.autoReverse){
+        //自动回溯
+
+    }else if(this._curRepeat>0){
+        //重复动画
+        this._curRepeat--;
+        this.state.curFrame = 0;
         requestAnimationFrame(coreAnimateHandler.bind(this),this._timeStep);
     }else{
         this.state.curValue = this.stopValue;
@@ -80,6 +91,8 @@ Animation.prototype = {
         this._totalFrames = this.duration/1000*this.fps;
         //计算定时器间隔
         this._timeStep = Math.round(1/this.fps);
+        //当前重复次数
+        this._curRepeat = this.repeatCount;
         //判断valueType
         switch (typeof this.startValue){
             case 'object':
@@ -129,6 +142,12 @@ Animation.prototype = {
         }
     }
 };
+
+var animator = new Animation(null,'',0,100,1000,{repeatCount:2});
+animator.onFrameCB = function () {
+    console.log(this.state.curFrame)
+};
+animator.start();
 
 export default Animation;
 

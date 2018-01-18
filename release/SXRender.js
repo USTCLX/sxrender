@@ -297,7 +297,7 @@ var Animation = function Animation(target, key, startValue, stopValue, duration,
     this.stopValue = stopValue;
     this.duration = duration;
 
-    this.fps = opts.fps || 60;
+    this.fps = opts.fps || 30;
     this.startDelay = opts.startDelay || 0;
     this.autoReverse = opts.autoReverse || false;
     this.repeatCount = opts.repeatCount || 1;
@@ -319,6 +319,7 @@ var Animation = function Animation(target, key, startValue, stopValue, duration,
     this._timeStep = 0; //定时器间隔
     this._timeStamp = 0; //开始动画事件戳
     this._lastTimeStamp = 0; //动画帧时间戳
+    this._curRepeat = 0;
     this._valueType = valueTypes.number;
 
     this.init();
@@ -333,7 +334,7 @@ var coreAnimateHandler = function coreAnimateHandler() {
 
     this.state.curValue = this._valueType !== valueTypes.object ? interpolateNumber(this.startValue, this.stopValue, this._p) : interpolateObject(this.startValue, this.stopValue, this._p);
 
-    if (this.target.hasOwnProperty(this.key)) {
+    if (this.target && this.target.hasOwnProperty(this.key)) {
         this.target[this.key] = this.state.curValue;
     }
 
@@ -343,6 +344,14 @@ var coreAnimateHandler = function coreAnimateHandler() {
     this._lastTimeStamp = Date.now();
 
     if (this.state.curFrame < this._totalFrames) {
+        //执行动画
+        requestAnimationFrame(coreAnimateHandler.bind(this), this._timeStep);
+    } else if (this.autoReverse) {
+        //
+    } else if (this._curRepeat > 0) {
+        //重复动画
+        this._curRepeat--;
+        this.state.curFrame = 0;
         requestAnimationFrame(coreAnimateHandler.bind(this), this._timeStep);
     } else {
         this.state.curValue = this.stopValue;
@@ -360,6 +369,8 @@ Animation.prototype = {
         this._totalFrames = this.duration / 1000 * this.fps;
         //计算定时器间隔
         this._timeStep = Math.round(1 / this.fps);
+        //当前重复次数
+        this._curRepeat = this.repeatCount;
         //判断valueType
         switch (_typeof(this.startValue)) {
             case 'object':
@@ -408,6 +419,12 @@ Animation.prototype = {
         }
     }
 };
+
+var animator = new Animation(null, '', 0, 100, 1000, { repeatCount: 2 });
+animator.onFrameCB = function () {
+    console.log(this.state.curFrame);
+};
+animator.start();
 
 /**
  * 根据阻尼系数，弹力系数，初始速度，初始位置信息，计算出进度p关于时间t的函数
