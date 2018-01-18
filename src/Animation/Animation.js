@@ -39,7 +39,6 @@ let Animation = function(target,key,startValue,stopValue,duration,opts){
     this._timeStep = 0;       //定时器间隔
     this._timeStamp = 0;      //开始动画事件戳
     this._lastTimeStamp = 0;  //动画帧时间戳
-    this._curRepeat = 0;      //当前重复序号
     this._isReverseState = false;
     this._valueType = valueTypes.number;
 
@@ -73,9 +72,9 @@ const coreAnimateHandler = function(){
         this._isReverseState = true;
         this.state.curFrame = 0;
         requestAnimationFrame(coreAnimateHandler.bind(this),this._timeStep);
-    }else if((this._curRepeat-1)>0){
+    }else if(this.state.repeat<(this.repeatCount-1)){
         //重复动画
-        this._curRepeat--;
+        this.state.repeat++;
         this.state.curFrame = 0;
         this._isReverseState = false;
         requestAnimationFrame(coreAnimateHandler.bind(this),this._timeStep);
@@ -94,8 +93,6 @@ Animation.prototype = {
         this._totalFrames = this.duration/1000*this.fps;
         //计算定时器间隔
         this._timeStep = Math.round(1000/this.fps);
-        //当前重复次数
-        this._curRepeat = this.repeatCount;
         //判断valueType
         switch (typeof this.startValue){
             case 'object':
@@ -126,13 +123,15 @@ Animation.prototype = {
 
     },
     stop:function(){
+        //reset
         this.state.stateType = stateTypes.idle;
         this.state.curValue = 0;
         this.state.curFrame = 0;
+        this.state.repeat = 0;
 
-        this._totalFrames = 0;
         this._isReverseState = false;
         this.didStopCB&&this.didStopCB();
+
     },
     pause:function(){
         if(this.state.stateType===stateTypes.running){
@@ -142,22 +141,30 @@ Animation.prototype = {
     },
     resume:function(){
         if(this.state.stateType===stateTypes.paused){
-            this.state.stateTypes = stateTypes.running;
+            this.state.stateType = stateTypes.running;
             requestAnimationFrame(coreAnimateHandler.bind(this),this._timeStep);
         }
     }
 };
 
 //test for api
-// var now = Date.now();
-// var animator = new Animation(null,'',0,100,1000,{repeatCount:2,autoReverse:true,fps:30});
-// animator.onFrameCB = function () {
-//     console.log(this.state.curValue)
-// };
-// animator.start();
-// animator.didStopCB = function(){
-//     console.log('elapsed',Date.now()-now);
-// };
+var now = Date.now();
+var animator = new Animation(null,'',0,100,1000,{repeatCount:2,autoReverse:true,fps:30});
+animator.onFrameCB = function () {
+    console.log(this.state.curValue);
+    if(this.state.curFrame===15){
+        animator.pause();
+        setTimeout(function(){
+            console.log('resume');
+            animator.resume();
+        },500)
+    }
+
+};
+animator.start();
+animator.didStopCB = function(){
+    console.log('elapsed',Date.now()-now,'start');
+};
 
 export default Animation;
 
