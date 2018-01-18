@@ -148,23 +148,23 @@ Animation.prototype = {
 };
 
 //test for api
-var now = Date.now();
-var animator = new Animation(null,'',0,100,1000,{repeatCount:2,autoReverse:true,fps:30});
-animator.onFrameCB = function () {
-    console.log(this.state.curValue);
-    if(this.state.curFrame===15){
-        animator.pause();
-        setTimeout(function(){
-            console.log('resume');
-            animator.resume();
-        },500)
-    }
-
-};
-animator.start();
-animator.didStopCB = function(){
-    console.log('elapsed',Date.now()-now,'start');
-};
+// var now = Date.now();
+// var animator = new Animation(null,'',0,100,1000,{repeatCount:2,autoReverse:true,fps:30});
+// animator.onFrameCB = function () {
+//     console.log(this.state.curValue);
+//     if(this.state.curFrame===15){
+//         animator.pause();
+//         setTimeout(function(){
+//             console.log('resume');
+//             animator.resume();
+//         },500)
+//     }
+//
+// };
+// animator.start();
+// animator.didStopCB = function(){
+//     console.log('elapsed',Date.now()-now,'start');
+// };
 
 export default Animation;
 
