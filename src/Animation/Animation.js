@@ -34,12 +34,12 @@ let Animation = function(target,key,startValue,stopValue,duration,opts){
     this.didStopCB = opts.didStopCB||function(){};
 
     //private
-    this._p = 0;              //进度
-    this._totalFrames = 0;    //总帧数
-    this._timeStep = 0;       //定时器间隔
-    this._timeStamp = 0;      //开始动画事件戳
-    this._lastTimeStamp = 0;  //动画帧时间戳
-    this._isReverseState = false;
+    this._p = 0;                 //进度
+    this._totalFrames = 0;       //总帧数
+    this._timeStep = 0;          //定时器间隔
+    this._timeStamp = 0;         //开始动画事件戳
+    this._lastTimeStamp = 0;     //动画帧时间戳
+    this._isReverseState = false;//当前是否处于回溯状态
     this._valueType = valueTypes.number;
 
     this.init();

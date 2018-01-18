@@ -327,7 +327,7 @@ var Animation = function Animation(target, key, startValue, stopValue, duration,
     this._timeStep = 0; //定时器间隔
     this._timeStamp = 0; //开始动画事件戳
     this._lastTimeStamp = 0; //动画帧时间戳
-    this._isReverseState = false;
+    this._isReverseState = false; //当前是否处于回溯状态
     this._valueType = valueTypes.number;
 
     this.init();
@@ -430,24 +430,6 @@ Animation.prototype = {
             requestAnimationFrame(coreAnimateHandler.bind(this), this._timeStep);
         }
     }
-};
-
-//test for api
-var now = Date.now();
-var animator = new Animation(null, '', 0, 100, 1000, { repeatCount: 2, autoReverse: true, fps: 30 });
-animator.onFrameCB = function () {
-    console.log(this.state.curValue);
-    if (this.state.curFrame === 15) {
-        animator.pause();
-        setTimeout(function () {
-            console.log('resume');
-            animator.resume();
-        }, 500);
-    }
-};
-animator.start();
-animator.didStopCB = function () {
-    console.log('elapsed', Date.now() - now, 'start');
 };
 
 /**
