@@ -130,10 +130,5 @@ Animation.prototype = {
     }
 };
 
-
-
-
-
-
 export default Animation;
 

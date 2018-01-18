@@ -10,6 +10,39 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
   return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
 };
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+var defineProperty = function (obj, key, value) {
+  if (key in obj) {
+    Object.defineProperty(obj, key, {
+      value: value,
+      enumerable: true,
+      configurable: true,
+      writable: true
+    });
+  } else {
+    obj[key] = value;
+  }
+
+  return obj;
+};
+
 /**
  * Created by lixiang on 2018/1/7.
  */
@@ -585,6 +618,9 @@ Object.assign(InertialAnimation.prototype, {
  * Created by lixiang on 2018/1/7.
  */
 
+//私有方法名
+var drawprogress = Symbol('drawProgress');
+
 var SXRender = function SXRender(opts) {
     var canvas, ctx, opts, id, w, h, bgColor, contentW, contentH, drawScrollBar;
     opts = opts || {};
@@ -607,7 +643,7 @@ var SXRender = function SXRender(opts) {
     this.init(canvas, ctx, contentW, contentH, drawScrollBar);
 };
 
-SXRender.prototype = {
+SXRender.prototype = defineProperty({
     constructor: SXRender,
     init: function init(canvas, ctx, contentW, contentH, drawScrollBar) {
         //canvas
@@ -808,7 +844,7 @@ SXRender.prototype = {
         }
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
         if (this.scrollHEnabled || this.scrollVEnabled && this.drawScrollBar) {
-            this._drawProgress();
+            this[drawprogress]();
         }
     },
     /**
@@ -834,44 +870,39 @@ SXRender.prototype = {
             id: genGUID()
         });
         this.objs.push(o);
-    },
-    /**
-     * 绘制进度条
-     * @private
-     */
-    _drawProgress: function _drawProgress() {
-        var top, left, width, height, offset;
-
-        if (this.scrollVEnabled) {
-            width = 4;
-            height = Math.round(this.height * this.height / this.contentH) - Math.abs(this.springOffset.y);
-            height = height < 10 ? 10 : height;
-            offset = this.springOffset.y < 0 ? this.springOffset.y : 0;
-            top = Math.round(-this.contentOffset.y * this.height / this.contentH) - offset;
-            top = top > this.height - 10 ? this.height - 10 : top;
-            left = this.width - width;
-
-            this.ctx.save();
-            this.ctx.fillStyle = '#888888';
-            this.ctx.fillRect(left, top, width, height);
-            this.ctx.restore();
-        }
-
-        if (this.scrollHEnabled) {
-            width = Math.round(this.width * this.width / this.contentW) - Math.abs(this.springOffset.x);
-            width = width < 10 ? 10 : width;
-            height = 4;
-
-            top = this.height - height;
-            offset = this.springOffset.x < 0 ? this.springOffset.x : 0;
-            left = Math.round(-this.contentOffset.x * this.width / this.contentW) - offset;
-            this.ctx.save();
-            this.ctx.fillStyle = '#888888';
-            this.ctx.fillRect(left, top, width, height);
-            this.ctx.restore();
-        }
     }
-};
+}, drawprogress, function () {
+    var top, left, width, height, offset;
+
+    if (this.scrollVEnabled) {
+        width = 4;
+        height = Math.round(this.height * this.height / this.contentH) - Math.abs(this.springOffset.y);
+        height = height < 10 ? 10 : height;
+        offset = this.springOffset.y < 0 ? this.springOffset.y : 0;
+        top = Math.round(-this.contentOffset.y * this.height / this.contentH) - offset;
+        top = top > this.height - 10 ? this.height - 10 : top;
+        left = this.width - width;
+
+        this.ctx.save();
+        this.ctx.fillStyle = '#888888';
+        this.ctx.fillRect(left, top, width, height);
+        this.ctx.restore();
+    }
+
+    if (this.scrollHEnabled) {
+        width = Math.round(this.width * this.width / this.contentW) - Math.abs(this.springOffset.x);
+        width = width < 10 ? 10 : width;
+        height = 4;
+
+        top = this.height - height;
+        offset = this.springOffset.x < 0 ? this.springOffset.x : 0;
+        left = Math.round(-this.contentOffset.x * this.width / this.contentW) - offset;
+        this.ctx.save();
+        this.ctx.fillStyle = '#888888';
+        this.ctx.fillRect(left, top, width, height);
+        this.ctx.restore();
+    }
+});
 
 /**
  * 鼠标按下事件。

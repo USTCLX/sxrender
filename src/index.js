@@ -5,6 +5,8 @@
 import * as Utils from './utils/utils';
 import {Animation,InertialAnimation,SpringAnimation} from './Animation'
 
+//私有方法名
+const drawprogress = Symbol('drawProgress');
 
 let SXRender = function (opts){
     var canvas,ctx,opts,id,w,h,bgColor,contentW,contentH,drawScrollBar;
@@ -231,7 +233,7 @@ SXRender.prototype = {
         }
         this.ctx.setTransform(1,0,0,1,0,0);
         if(this.scrollHEnabled||this.scrollVEnabled&&this.drawScrollBar){
-            this._drawProgress();
+            this[drawprogress]();
         }
     },
     /**
@@ -262,7 +264,7 @@ SXRender.prototype = {
      * 绘制进度条
      * @private
      */
-    _drawProgress:function() {
+    [drawprogress]:function() {
         var top,left,width,height,offset;
 
         if(this.scrollVEnabled){
