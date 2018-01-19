@@ -49,11 +49,12 @@ const valueTypes = {
 };
 
 //状态构造器
-function State(stateType,repeat,curFrame,curValue){
+function State(stateType,repeat,curFrame,curValue,reversing){
     this.stateType = stateType || stateTypes.idle;
     this.repeat = repeat || 0;
     this.curFrame = curFrame || 0;
     this.curValue = curValue;
+    this.reversing = reversing||false;
 }
 
 //插值
