@@ -993,7 +993,7 @@ function mouseUpHandler(e) {
             if (this.springOffset.y !== 0 || this.springOffset.x !== 0) {
                 //开启弹跳动画
                 var self = this;
-                this._animation = new SpringAnimation(null, '', 0, 12, 180, this.springOffset, { x: 0, y: 0 }, 2000);
+                this._animation = new SpringAnimation(null, '', 0, 12, 180, this.springOffset, { x: 0, y: 0 }, 800);
                 this._animation.onFrameCB = function () {
                     self.springOffset = this.state.curValue;
                     self.reRender();
@@ -1034,7 +1034,7 @@ function mouseUpHandler(e) {
                             this.stop();
                             //需要开启spring弹簧动画,只有在单方向是开启
                             if (Math.abs(vy) > 50) {
-                                self._animation = new SpringAnimation(null, '', vy, 20, 180, 0, 0, 2000, 1);
+                                self._animation = new SpringAnimation(null, '', vy, 20, 180, 0, 0, 800, 1);
                                 self._animation.onFrameCB = function () {
                                     self.springOffset.y = this.state.curValue;
                                     self.reRender();
