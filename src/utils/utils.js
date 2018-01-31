@@ -7,8 +7,8 @@
  * 获取元素内相对坐标
  * @param  {[type]} e [description]
  */
-const getRelativeRect = function(e){
-    var x,y,DomRect;
+const getRelativeRect = function (e) {
+    var x, y, DomRect;
 
     x = e.clientX;
     y = e.clientY;
@@ -16,8 +16,8 @@ const getRelativeRect = function(e){
     DomRect = e.target.getBoundingClientRect();
 
     return {
-        x:Math.round(x-DomRect.x),
-        y:Math.round(y-DomRect.y)
+        x: Math.round(x - DomRect.x),
+        y: Math.round(y - DomRect.y)
     }
 };
 
@@ -26,22 +26,22 @@ const getRelativeRect = function(e){
  * @param  {[type]} objs     [description]
  * @param  {[type]} clickPos [description]
  */
-const checkClickElm = function(objs,clickPos,contentOffset){
+const checkClickElm = function (objs, clickPos, contentOffset) {
     var obj = null;
     var pos = clickPos;
-    for(var i=0,il=objs.length;i<il;i++){
+    for (var i = 0, il = objs.length; i < il; i++) {
         obj = objs[i];
-        if(obj.draggable!==true){
+        if (obj.draggable !== true) {
             continue;
         }
-        switch (obj.type){
+        switch (obj.type) {
             case 'ball':
-                if((pos.x>(obj.x+contentOffset.x-obj.radius))&&(pos.x<(obj.x+contentOffset.x+obj.radius))&&(pos.y>(obj.y+contentOffset.y-obj.radius))&&(pos.y<(obj.y+contentOffset.y+obj.radius))){
+                if ((pos.x > (obj.x + contentOffset.x - obj.radius)) && (pos.x < (obj.x + contentOffset.x + obj.radius)) && (pos.y > (obj.y + contentOffset.y - obj.radius)) && (pos.y < (obj.y + contentOffset.y + obj.radius))) {
                     return obj.id;
                 }
                 break;
             case 'rect':
-                if((pos.x>(obj.x+contentOffset.x))&&(pos.x<(obj.x+contentOffset.x+obj.w))&&(pos.y>(obj.y+contentOffset.y))&&(pos.y<(obj.y+contentOffset.y+obj.h))){
+                if ((pos.x > (obj.x + contentOffset.x)) && (pos.x < (obj.x + contentOffset.x + obj.w)) && (pos.y > (obj.y + contentOffset.y)) && (pos.y < (obj.y + contentOffset.y + obj.h))) {
                     return obj.id;
                 }
                 break;
@@ -63,12 +63,12 @@ const checkClickElm = function(objs,clickPos,contentOffset){
  * @param  {num} d 容器尺寸
  * @return {num}   实际移动距离
  */
-const rubberBanding = function(x,d){
+const rubberBanding = function (x, d) {
     const c = 0.55;
-    if(x>0){
-        return Math.round((1-(1/((x*c/d)+1)))*d);
-    }else{
-        return -Math.round((1-(1/((-x*c/d)+1)))*d)
+    if (x > 0) {
+        return Math.round((1 - (1 / ((x * c / d) + 1))) * d);
+    } else {
+        return -Math.round((1 - (1 / ((-x * c / d) + 1))) * d)
     }
 };
 
@@ -77,9 +77,9 @@ const rubberBanding = function(x,d){
  * 生成uuid
  * @returns {string}
  */
-const genGUID = function(){
-    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxx".replace(/[xy]/g,function (c) {
-        var r = Math.random()*16|0,v=(c==='x')?r:(r&0x3|0x8);
+const genGUID = function () {
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxx".replace(/[xy]/g, function (c) {
+        var r = Math.random() * 16 | 0, v = (c === 'x') ? r : (r & 0x3 | 0x8);
         return v.toString(16);
     }).toUpperCase();
 };
@@ -87,30 +87,30 @@ const genGUID = function(){
 /**
  * 深拷贝
  */
-const deepClone = function(values){
+const deepClone = function (values) {
     var copy;
-    if(null===values||"object"!==typeof values){
+    if (null === values || "object" !== typeof values) {
         return values
     }
 
-    if(values instanceof Date){
+    if (values instanceof Date) {
         copy = new Date();
         copy.setTime(values.getTime());
         return copy;
     }
 
-    if(values instanceof Array){
+    if (values instanceof Array) {
         copy = [];
-        for(var i=0,len=values.length;i<len;i++){
+        for (var i = 0, len = values.length; i < len; i++) {
             copy[i] = deepClone(values[i]);
         }
         return copy;
     }
 
-    if(values instanceof Object){
+    if (values instanceof Object) {
         copy = {};
-        for(var key in values){
-            if(values.hasOwnProperty(key)){
+        for (var key in values) {
+            if (values.hasOwnProperty(key)) {
                 copy[key] = deepClone(values[key]);
             }
         }
@@ -118,4 +118,21 @@ const deepClone = function(values){
     }
 };
 
-export {getRelativeRect,rubberBanding,checkClickElm,genGUID,deepClone};
+/**
+ * 返回对象类型，小写字符串
+ */
+const checkType = function (obj) {
+    var str = Object.prototype.toString.call(obj);
+    return str.slice(6, str.length).toLowerCase();
+};
+
+const BaseType = {
+    String: 'string',
+    Object: 'object',
+    Function: 'function',
+    Boolean: 'boolean',
+    Array: 'array',
+    RegExp: 'regexp'
+};
+
+export {getRelativeRect, rubberBanding, checkClickElm, genGUID, deepClone, checkType, BaseType};
