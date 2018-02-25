@@ -3,7 +3,7 @@
  */
 
 import * as Utils from './utils/utils';
-import {Animation,InertialAnimation,SpringAnimation} from './Animation'
+import {Animation,InertialAnimation,SpringAnimation} from './Animation';
 
 //私有方法名
 const drawprogress = Symbol('drawProgress');

@@ -123,7 +123,7 @@ const deepClone = function (values) {
  */
 const checkType = function (obj) {
     var str = Object.prototype.toString.call(obj);
-    return str.slice(6, str.length).toLowerCase();
+    return str.slice(8, str.length-1).toLowerCase();
 };
 
 const BaseType = {
@@ -132,7 +132,8 @@ const BaseType = {
     Function: 'function',
     Boolean: 'boolean',
     Array: 'array',
-    RegExp: 'regexp'
+    RegExp: 'regexp',
+    Number: 'number'
 };
 
 export {getRelativeRect, rubberBanding, checkClickElm, genGUID, deepClone, checkType, BaseType};

@@ -44,4 +44,10 @@ window.onload = function(){
 
     paintBoardImg.src = paintBoard.canvas.toDataURL();
 
+
+    //测试loadImage模块功能。
+    loadImage(['../public/img.jpg','../public/pointer.png'],function(success,imgList){
+    	console.log(success,imgList);
+	})
+
 };
