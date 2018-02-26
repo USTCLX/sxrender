@@ -6,6 +6,7 @@ import * as Utils from './utils/utils';
 import {InertialAnimation, SpringAnimation} from './Animation';
 import {Rect,Circle} from './Graph';
 import Storage from './storage/storage';
+import Painter from './painter/painter';
 
 
 //私有方法名
@@ -78,6 +79,9 @@ SXRender.prototype = {
         //objs list
         this.objects = [];
         this.storage = new Storage();
+
+        //painter
+        this.painter = new Painter(this.ctx,null,this.storage,this.springOffset);
 
         //animation
         this._animation = null;     //动画
@@ -218,24 +222,25 @@ SXRender.prototype = {
         var GraphType = Utils.GraphType;
         this.clearCtx();
         this.backgroundImg.content ? this.drawBackground() : null;
-        this.ctx.setTransform(1, 0, 0, 1, this.contentOffset.x, this.contentOffset.y);
-        var objs = this.objects || [];
-        for (var i = 0, il = objs.length; i < il; i++) {
-            switch (objs[i].type) {
-                case GraphType.Circle:
-                    this.drawBall(objs[i]);
-                    break;
-                case GraphType.Rect:
-                    this.drawRect(objs[i]);
-                    break;
-                case GraphType.Image:
-                    this.drawImage(objs[i]);
-                    break;
-                default:
-                    console.log('miss in reRender');
-                    break;
-            }
-        }
+        this.ctx.setTransform(1, 0, 0, 1, this.contentOffset.x+this.springOffset.x, this.contentOffset.y+this.springOffset.y);
+        // var objs = this.objects || [];
+        // for (var i = 0, il = objs.length; i < il; i++) {
+        //     switch (objs[i].type) {
+        //         case GraphType.Circle:
+        //             this.drawBall(objs[i]);
+        //             break;
+        //         case GraphType.Rect:
+        //             this.drawRect(objs[i]);
+        //             break;
+        //         case GraphType.Image:
+        //             this.drawImage(objs[i]);
+        //             break;
+        //         default:
+        //             console.log('miss in reRender');
+        //             break;
+        //     }
+        // }
+        this.painter.renderAll();
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
         if (this.scrollHEnabled || this.scrollVEnabled && this.drawScrollBar) {
             this[drawprogress]();
@@ -259,12 +264,9 @@ SXRender.prototype = {
      * @param obj
      */
     add: function (obj) {
-        // var o = {};
-        // o = Object.assign(o, obj, {
-        //     id: Utils.genGUID()
-        // });
-        // this.objects.push(o);
         this.objects.push(obj);
+        this.storage.addObj(obj);
+        console.log('storage',this.storage);
         this.reRender();
     },
     Rect: function (opts) {

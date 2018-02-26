@@ -934,16 +934,16 @@ var Circle = function (_Graph) {
  * Created by lixiang on 2018/2/26.
  */
 
-var Stroage = function () {
-    function Stroage() {
-        classCallCheck(this, Stroage);
+var Storage = function () {
+    function Storage() {
+        classCallCheck(this, Storage);
 
         this.objects = [];
     }
 
-    createClass(Stroage, [{
-        key: "add",
-        value: function add(obj) {
+    createClass(Storage, [{
+        key: "addObj",
+        value: function addObj(obj) {
             this.objects.push(obj);
         }
     }, {
@@ -968,8 +968,58 @@ var Stroage = function () {
             }
         }
     }]);
-    return Stroage;
+    return Storage;
 }();
+
+/**
+ * Created by lixiang on 2018/2/26.
+ */
+
+var Painter = function () {
+    function Painter(ctx, backCtx, storage) {
+        classCallCheck(this, Painter);
+
+        this.backCtx = backCtx;
+        this.ctx = ctx;
+        this.storage = storage;
+        this.objects = this.storage.objects;
+    }
+
+    createClass(Painter, [{
+        key: 'renderAll',
+        value: function renderAll() {
+            var objs = this.objects;
+            for (var i = 0, il = objs.length; i < il; i++) {
+                switch (objs[i].type) {
+                    case GraphType.Rect:
+                        drawRect(this.ctx, objs[i]);
+                        break;
+                    case GraphType.Circle:
+                        break;
+                    case GraphType.Image:
+                        break;
+                    default:
+                        console.error('not match type in render all');
+                        break;
+                }
+            }
+        }
+    }]);
+    return Painter;
+}();
+
+function drawRect(ctx, obj) {
+    var x, y, w, h, color;
+    x = obj.x;
+    y = obj.y;
+    w = obj.width;
+    h = obj.height;
+    color = obj.fill;
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, w, h);
+    ctx.restore();
+}
 
 /**
  * Created by lixiang on 2018/1/7.
@@ -1043,7 +1093,10 @@ SXRender.prototype = defineProperty({
 
         //objs list
         this.objects = [];
-        this.stroage = new Stroage();
+        this.storage = new Storage();
+
+        //painter
+        this.painter = new Painter(this.ctx, null, this.storage, this.springOffset);
 
         //animation
         this._animation = null; //动画
@@ -1180,27 +1233,27 @@ SXRender.prototype = defineProperty({
      * @return {[type]} [description]
      */
     reRender: function reRender() {
-        var GraphType$$1 = GraphType;
         this.clearCtx();
         this.backgroundImg.content ? this.drawBackground() : null;
-        this.ctx.setTransform(1, 0, 0, 1, this.contentOffset.x, this.contentOffset.y);
-        var objs = this.objects || [];
-        for (var i = 0, il = objs.length; i < il; i++) {
-            switch (objs[i].type) {
-                case GraphType$$1.Circle:
-                    this.drawBall(objs[i]);
-                    break;
-                case GraphType$$1.Rect:
-                    this.drawRect(objs[i]);
-                    break;
-                case GraphType$$1.Image:
-                    this.drawImage(objs[i]);
-                    break;
-                default:
-                    console.log('miss in reRender');
-                    break;
-            }
-        }
+        this.ctx.setTransform(1, 0, 0, 1, this.contentOffset.x + this.springOffset.x, this.contentOffset.y + this.springOffset.y);
+        // var objs = this.objects || [];
+        // for (var i = 0, il = objs.length; i < il; i++) {
+        //     switch (objs[i].type) {
+        //         case GraphType.Circle:
+        //             this.drawBall(objs[i]);
+        //             break;
+        //         case GraphType.Rect:
+        //             this.drawRect(objs[i]);
+        //             break;
+        //         case GraphType.Image:
+        //             this.drawImage(objs[i]);
+        //             break;
+        //         default:
+        //             console.log('miss in reRender');
+        //             break;
+        //     }
+        // }
+        this.painter.renderAll();
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
         if (this.scrollHEnabled || this.scrollVEnabled && this.drawScrollBar) {
             this[drawprogress]();
@@ -1224,12 +1277,9 @@ SXRender.prototype = defineProperty({
      * @param obj
      */
     add: function add(obj) {
-        // var o = {};
-        // o = Object.assign(o, obj, {
-        //     id: Utils.genGUID()
-        // });
-        // this.objects.push(o);
         this.objects.push(obj);
+        this.storage.addObj(obj);
+        console.log('storage', this.storage);
         this.reRender();
     },
     Rect: function Rect$$1(opts) {

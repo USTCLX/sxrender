@@ -7,7 +7,7 @@ class Storage {
         this.objects = [];
     }
 
-    add(obj) {
+    addObj(obj) {
         this.objects.push(obj);
     }
 

@@ -18,8 +18,8 @@ window.onload = function(){
     // paintBoard.reRender();
 
     var rect = paintBoard.Rect({x:200,y:50,width:100,height:100,fill:'rgb(255,0,0)',draggable:true});
-    var circle = paintBoard.Circle({x:200,y:300,radius:50,fill:'rgb(255,0,0)',draggable:true});
+    // var circle = paintBoard.Circle({x:200,y:300,radius:50,fill:'rgb(255,0,0)',draggable:true});
     paintBoard.add(rect);
-    paintBoard.add(circle);
+    // paintBoard.add(circle);
 
 };
