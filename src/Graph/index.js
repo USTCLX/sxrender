@@ -1,0 +1,11 @@
+/**
+ * Created by lixiang on 2018/2/26.
+ * 对外暴露图形接口
+ */
+
+import Rect from './Rect';
+import Circle from './Circle';
+
+export {Rect,Circle};
+
+

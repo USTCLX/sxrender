@@ -20,9 +20,29 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 
 
 
+var classCallCheck = function (instance, Constructor) {
+  if (!(instance instanceof Constructor)) {
+    throw new TypeError("Cannot call a class as a function");
+  }
+};
 
+var createClass = function () {
+  function defineProperties(target, props) {
+    for (var i = 0; i < props.length; i++) {
+      var descriptor = props[i];
+      descriptor.enumerable = descriptor.enumerable || false;
+      descriptor.configurable = true;
+      if ("value" in descriptor) descriptor.writable = true;
+      Object.defineProperty(target, descriptor.key, descriptor);
+    }
+  }
 
-
+  return function (Constructor, protoProps, staticProps) {
+    if (protoProps) defineProperties(Constructor.prototype, protoProps);
+    if (staticProps) defineProperties(Constructor, staticProps);
+    return Constructor;
+  };
+}();
 
 
 
@@ -41,6 +61,42 @@ var defineProperty = function (obj, key, value) {
   }
 
   return obj;
+};
+
+
+
+var inherits = function (subClass, superClass) {
+  if (typeof superClass !== "function" && superClass !== null) {
+    throw new TypeError("Super expression must either be null or a function, not " + typeof superClass);
+  }
+
+  subClass.prototype = Object.create(superClass && superClass.prototype, {
+    constructor: {
+      value: subClass,
+      enumerable: false,
+      writable: true,
+      configurable: true
+    }
+  });
+  if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass;
+};
+
+
+
+
+
+
+
+
+
+
+
+var possibleConstructorReturn = function (self, call) {
+  if (!self) {
+    throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
+  }
+
+  return call && (typeof call === "object" || typeof call === "function") ? call : self;
 };
 
 /**
@@ -79,17 +135,17 @@ var checkClickElm = function checkClickElm(objs, clickPos, contentOffset) {
             continue;
         }
         switch (obj.type) {
-            case 'ball':
+            case GraphType.Circle:
                 if (pos.x > obj.x + contentOffset.x - obj.radius && pos.x < obj.x + contentOffset.x + obj.radius && pos.y > obj.y + contentOffset.y - obj.radius && pos.y < obj.y + contentOffset.y + obj.radius) {
                     return obj.id;
                 }
                 break;
-            case 'rect':
-                if (pos.x > obj.x + contentOffset.x && pos.x < obj.x + contentOffset.x + obj.w && pos.y > obj.y + contentOffset.y && pos.y < obj.y + contentOffset.y + obj.h) {
+            case GraphType.Rect:
+                if (pos.x > obj.x + contentOffset.x && pos.x < obj.x + contentOffset.x + obj.width && pos.y > obj.y + contentOffset.y && pos.y < obj.y + contentOffset.y + obj.height) {
                     return obj.id;
                 }
                 break;
-            case 'image':
+            case GraphType.Image:
                 return obj.id;
                 break;
             default:
@@ -133,7 +189,7 @@ var genGUID = function genGUID() {
  */
 var deepClone = function deepClone(values) {
     var copy;
-    if (null === values || "object" !== (typeof values === 'undefined' ? 'undefined' : _typeof(values))) {
+    if (null === values || "object" !== (typeof values === "undefined" ? "undefined" : _typeof(values))) {
         return values;
     }
 
@@ -160,6 +216,30 @@ var deepClone = function deepClone(values) {
         }
         return copy;
     }
+};
+
+/**
+ * 返回对象类型，小写字符串
+ */
+var checkType = function checkType(obj) {
+    var str = Object.prototype.toString.call(obj);
+    return str.slice(8, str.length - 1).toLowerCase();
+};
+
+var BaseType = {
+    String: 'string',
+    Object: 'object',
+    Function: 'function',
+    Boolean: 'boolean',
+    Array: 'array',
+    RegExp: 'regexp',
+    Number: 'number'
+};
+
+var GraphType = {
+    Rect: 'SX-Rect',
+    Circle: 'SX-Circle',
+    Image: 'SX-Image'
 };
 
 /**
@@ -637,6 +717,260 @@ Object.assign(InertialAnimation.prototype, {
     }
 });
 
+//事件分发类
+function EventDispatcher() {
+    this._handlers = {};
+}
+
+/**
+ * 事件监听器
+ * @param event  事件名称
+ * @param handler 处理函数
+ * @param context  处理函数上下文
+ */
+EventDispatcher.prototype.on = function (event, handler, context) {
+    if (typeof this._handlers[event] === 'undefined') {
+        this._handlers[event] = [];
+    }
+    if (checkType(handler) === BaseType.Function) {
+        this._handlers[event].push({
+            h: handler,
+            one: false,
+            ctx: context || this
+        });
+    }
+};
+
+/**
+ * 单次事件监听器
+ * @param event  事件名称
+ * @param handler 处理函数
+ * @param context 处理函数上下文
+ */
+EventDispatcher.prototype.once = function (event, handler, context) {
+    if (typeof this._handlers[event] === 'undefined') {
+        this._handlers[event] = [];
+    }
+    if (checkType(handler) === BaseType.Function) {
+        this._handlers[event].push({
+            h: handler,
+            one: true,
+            ctx: context || this
+        });
+    }
+};
+
+/**
+ * 事件分发器
+ * @param event 事件名称
+ */
+EventDispatcher.prototype.trigger = function (event) {
+    if (checkType(event) === BaseType.String) {
+        event = { type: event };
+    }
+    if (!event.target) {
+        event.target = this;
+    }
+    if (!event.type) {
+        throw new Error("Event object missing 'type' property");
+    }
+    if (checkType(this._handlers[event.type]) === BaseType.Array) {
+        var _h = this._handlers;
+
+        for (var i = 0, il = _h.length; i < il; i++) {
+            _h[i]['h'].call(_h[i]['ctx'], event);
+        }
+    }
+};
+
+/**
+ * 带有执行环境的事件分发
+ * @param event
+ * @param context
+ */
+EventDispatcher.prototype.triggerWithCtx = function (event, context) {
+    if (checkType(event) === BaseType.String) {
+        event = { type: event };
+    }
+    if (!event.target) {
+        event.target = this;
+    }
+    if (!event.type) {
+        throw new Error("Event object missing 'type' property");
+    }
+    if (checkType(this._handlers[event.type]) === BaseType.Array) {
+        var _h = this._handlers;
+
+        for (var i = 0, il = _h.length; i < il; i++) {
+            _h[i]['h'].call(context, event);
+        }
+    }
+};
+
+/**
+ * 取消事件监听
+ * @param event 事件名称
+ */
+EventDispatcher.prototype.off = function (event, handler) {
+    var h;
+    if (checkType(this._handlers[event]) === BaseType.Array) {
+        h = this._handlers[event];
+        for (var i = 0, il = h.length; i < il; i++) {
+            if (h[i]['h'] === handler) {
+                h.splice(i, 1);
+                break;
+            }
+        }
+    }
+};
+
+/**
+ * 图形基类
+ * @param opts
+ * @constructor
+ */
+
+var Graph = function (_EventDispatcher) {
+    inherits(Graph, _EventDispatcher);
+
+    function Graph(opts) {
+        classCallCheck(this, Graph);
+
+        var _this = possibleConstructorReturn(this, (Graph.__proto__ || Object.getPrototypeOf(Graph)).call(this));
+
+        opts = opts || {};
+
+        //shape
+        _this.x = opts.x || 0;
+        _this.y = opts.y || 0;
+        _this.width = opts.width || 0;
+        _this.height = opts.height || 0;
+
+        //style
+        _this.fill = opts.fill || '';
+        _this.stroke = opts.stroke || '';
+        _this.lineWidth = opts.lineWidth || 1;
+
+        //others
+        _this.id = opts.id || genGUID();
+        _this.draggable = opts.draggable || false;
+
+        return _this;
+    }
+
+    return Graph;
+}(EventDispatcher);
+
+//old fashion
+// function Graph(opts) {
+//     opts = opts || {};
+//
+//     EventDispatcher.call(this);
+//
+//     //shape
+//     this.x = opts.x || 0;
+//     this.y = opts.y || 0;
+//     this.width = opts.width || 20;
+//     this.height = opts.height || 20;
+//
+//     //style
+//     this.fill = opts.fill;
+//     this.stroke = opts.stroke;
+//     this.lineWidth = opts.lineWidth;
+//
+//     //others
+//     this.id = opts.id || genGUID();
+// }
+//
+// Graph.prototype = Object.create(EventDispatcher);
+// Graph.prototype.constructor = Graph;
+
+/**
+ * Created by lixiang on 2018/2/26.
+ */
+
+var Rect = function (_Graph) {
+    inherits(Rect, _Graph);
+
+    function Rect(opts) {
+        classCallCheck(this, Rect);
+
+        var _this = possibleConstructorReturn(this, (Rect.__proto__ || Object.getPrototypeOf(Rect)).call(this, opts));
+
+        _this.type = GraphType.Rect;
+        return _this;
+    }
+
+    return Rect;
+}(Graph);
+
+/**
+ * Created by lixiang on 2018/2/26.
+ */
+var Circle = function (_Graph) {
+    inherits(Circle, _Graph);
+
+    function Circle(opts) {
+        classCallCheck(this, Circle);
+
+        opts = opts || {};
+
+        var _this = possibleConstructorReturn(this, (Circle.__proto__ || Object.getPrototypeOf(Circle)).call(this, opts));
+
+        _this.radius = opts.radius || 0;
+        _this.type = GraphType.Circle;
+        return _this;
+    }
+
+    return Circle;
+}(Graph);
+
+/**
+ * Created by lixiang on 2018/2/26.
+ * 对外暴露图形接口
+ */
+
+/**
+ * Created by lixiang on 2018/2/26.
+ */
+
+var Stroage = function () {
+    function Stroage() {
+        classCallCheck(this, Stroage);
+
+        this.objects = [];
+    }
+
+    createClass(Stroage, [{
+        key: "add",
+        value: function add(obj) {
+            this.objects.push(obj);
+        }
+    }, {
+        key: "findById",
+        value: function findById(id) {
+            var objs = this.objects;
+            for (var i = 0, il = objs.length; i < il; i++) {
+                if (objs[i].id === id) {
+                    return objs[i];
+                }
+            }
+        }
+    }, {
+        key: "deleteById",
+        value: function deleteById(id) {
+            var objs = this.objects;
+            for (var i = 0, il = objs.length; i < il; i++) {
+                if (objs[i].id === id) {
+                    objs.splice(i, 1);
+                    return;
+                }
+            }
+        }
+    }]);
+    return Stroage;
+}();
+
 /**
  * Created by lixiang on 2018/1/7.
  */
@@ -645,15 +979,15 @@ Object.assign(InertialAnimation.prototype, {
 var drawprogress = Symbol('drawProgress');
 
 var SXRender = function SXRender(opts) {
-    var canvas, ctx, opts, id, w, h, bgColor, contentW, contentH, drawScrollBar;
+    var canvas, ctx, id, w, h, bgColor, contentW, contentH, drawScrollBar;
     opts = opts || {};
 
     id = opts.id || '';
     w = opts.width;
     h = opts.height;
     bgColor = opts.backgroundColor || '';
-    contentW = opts.contentW || w;
-    contentH = opts.contentH || h;
+    contentW = opts.contentWidth || w;
+    contentH = opts.contentHeight || h;
     drawScrollBar = opts.drawScrollBar || false;
 
     canvas = !!id ? document.getElementById(id) : document.createElement("canvas");
@@ -708,7 +1042,8 @@ SXRender.prototype = defineProperty({
         };
 
         //objs list
-        this.objs = [];
+        this.objects = [];
+        this.stroage = new Stroage();
 
         //animation
         this._animation = null; //动画
@@ -775,7 +1110,7 @@ SXRender.prototype = defineProperty({
         x = opts.x + this.springOffset.x;
         y = opts.y + this.springOffset.y;
         radius = opts.radius;
-        color = opts.color;
+        color = opts.fill;
 
         this.ctx.save();
         this.ctx.beginPath();
@@ -805,9 +1140,9 @@ SXRender.prototype = defineProperty({
         var opts = opts || {};
         x = opts.x + this.springOffset.x;
         y = opts.y + this.springOffset.y;
-        w = opts.w;
-        h = opts.h;
-        color = opts.color;
+        w = opts.width;
+        h = opts.height;
+        color = opts.fill;
         this.ctx.save();
         this.ctx.fillStyle = color;
         this.ctx.fillRect(x, y, w, h);
@@ -845,19 +1180,20 @@ SXRender.prototype = defineProperty({
      * @return {[type]} [description]
      */
     reRender: function reRender() {
+        var GraphType$$1 = GraphType;
         this.clearCtx();
         this.backgroundImg.content ? this.drawBackground() : null;
         this.ctx.setTransform(1, 0, 0, 1, this.contentOffset.x, this.contentOffset.y);
-        var objs = this.objs || [];
+        var objs = this.objects || [];
         for (var i = 0, il = objs.length; i < il; i++) {
             switch (objs[i].type) {
-                case 'ball':
+                case GraphType$$1.Circle:
                     this.drawBall(objs[i]);
                     break;
-                case 'rect':
+                case GraphType$$1.Rect:
                     this.drawRect(objs[i]);
                     break;
-                case 'image':
+                case GraphType$$1.Image:
                     this.drawImage(objs[i]);
                     break;
                 default:
@@ -876,9 +1212,9 @@ SXRender.prototype = defineProperty({
      * @returns {*}
      */
     findObjById: function findObjById(id) {
-        for (var i = 0, il = this.objs.length; i < il; i++) {
-            if (this.objs[i].id === id) {
-                return this.objs[i];
+        for (var i = 0, il = this.objects.length; i < il; i++) {
+            if (this.objects[i].id === id) {
+                return this.objects[i];
             }
         }
         return null;
@@ -888,11 +1224,19 @@ SXRender.prototype = defineProperty({
      * @param obj
      */
     add: function add(obj) {
-        var o = {};
-        o = Object.assign(o, obj, {
-            id: genGUID()
-        });
-        this.objs.push(o);
+        // var o = {};
+        // o = Object.assign(o, obj, {
+        //     id: Utils.genGUID()
+        // });
+        // this.objects.push(o);
+        this.objects.push(obj);
+        this.reRender();
+    },
+    Rect: function Rect$$1(opts) {
+        return new Rect(opts);
+    },
+    Circle: function Circle$$1(opts) {
+        return new Circle(opts);
     }
 }, drawprogress, function () {
     var top, left, width, height, offset;
@@ -935,7 +1279,7 @@ SXRender.prototype = defineProperty({
 function mouseDownHandler(e) {
     var pos = getRelativeRect(e);
 
-    this.selectObjId = checkClickElm(this.objs, pos, this.contentOffset);
+    this.selectObjId = checkClickElm(this.objects, pos, this.contentOffset);
     this.mouseDownPos = pos;
     if (!!this.selectObjId) {
         //选中物体

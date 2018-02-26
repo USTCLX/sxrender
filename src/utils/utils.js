@@ -35,17 +35,17 @@ const checkClickElm = function (objs, clickPos, contentOffset) {
             continue;
         }
         switch (obj.type) {
-            case 'ball':
+            case GraphType.Circle:
                 if ((pos.x > (obj.x + contentOffset.x - obj.radius)) && (pos.x < (obj.x + contentOffset.x + obj.radius)) && (pos.y > (obj.y + contentOffset.y - obj.radius)) && (pos.y < (obj.y + contentOffset.y + obj.radius))) {
                     return obj.id;
                 }
                 break;
-            case 'rect':
-                if ((pos.x > (obj.x + contentOffset.x)) && (pos.x < (obj.x + contentOffset.x + obj.w)) && (pos.y > (obj.y + contentOffset.y)) && (pos.y < (obj.y + contentOffset.y + obj.h))) {
+            case GraphType.Rect:
+                if ((pos.x > (obj.x + contentOffset.x)) && (pos.x < (obj.x + contentOffset.x + obj.width)) && (pos.y > (obj.y + contentOffset.y)) && (pos.y < (obj.y + contentOffset.y + obj.height))) {
                     return obj.id;
                 }
                 break;
-            case 'image':
+            case GraphType.Image:
                 return obj.id;
                 break;
             default:
@@ -123,7 +123,7 @@ const deepClone = function (values) {
  */
 const checkType = function (obj) {
     var str = Object.prototype.toString.call(obj);
-    return str.slice(8, str.length-1).toLowerCase();
+    return str.slice(8, str.length - 1).toLowerCase();
 };
 
 const BaseType = {
@@ -136,4 +136,10 @@ const BaseType = {
     Number: 'number'
 };
 
-export {getRelativeRect, rubberBanding, checkClickElm, genGUID, deepClone, checkType, BaseType};
+const GraphType = {
+    Rect: 'SX-Rect',
+    Circle: 'SX-Circle',
+    Image: 'SX-Image'
+};
+
+export {getRelativeRect, rubberBanding, checkClickElm, genGUID, deepClone, checkType, BaseType, GraphType};
