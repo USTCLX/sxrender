@@ -3,18 +3,18 @@
  */
 
 import * as Utils from './utils/utils';
-import {Animation,InertialAnimation,SpringAnimation} from './Animation';
+import {InertialAnimation,SpringAnimation} from './Animation';
 
 //私有方法名
 const drawprogress = Symbol('drawProgress');
 
-let SXRender = function (opts){
+const SXRender = function (opts){
     var canvas,ctx,opts,id,w,h,bgColor,contentW,contentH,drawScrollBar;
     opts = opts||{};
 
     id=opts.id||'';
-    w=opts.w;
-    h=opts.h;
+    w=opts.width;
+    h=opts.height;
     bgColor=opts.backgroundColor||'';
     contentW = opts.contentW||w;
     contentH = opts.contentH||h;
