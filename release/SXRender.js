@@ -649,8 +649,8 @@ var SXRender = function SXRender(opts) {
     opts = opts || {};
 
     id = opts.id || '';
-    w = opts.w;
-    h = opts.h;
+    w = opts.width;
+    h = opts.height;
     bgColor = opts.backgroundColor || '';
     contentW = opts.contentW || w;
     contentH = opts.contentH || h;

@@ -133,7 +133,7 @@ const BaseType = {
     Boolean: 'boolean',
     Array: 'array',
     RegExp: 'regexp',
-    Number:'number'
+    Number: 'number'
 };
 
 export {getRelativeRect, rubberBanding, checkClickElm, genGUID, deepClone, checkType, BaseType};

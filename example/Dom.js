@@ -1,11 +1,12 @@
 window.onload = function(){
 	var paintBoard = new SXRender({
-		// id:'c',
-		w:300,
-		h:2000,
-        // contentW:300,
-        // contentH:2000,
-		drawScrollBar:false
+        id:'c',
+        width:300,
+        height:500,
+        contentW:300,
+        contentH:2000,
+        backgroundColor:'rgb(159,192,234)',
+        drawScrollBar:true
 	});//画板
 
     
@@ -16,32 +17,18 @@ window.onload = function(){
 
     paintBoard.reRender();
 
-
-    var paintBoard2 = new SXRender({
-    	id:'c',
-    	w:300,
-    	h:500,
-    	contentW:300,
-    	contentH:2000,
-    	backgroundColor:'rgb(159,192,234)',
-    	drawScrollBar:true
-    });
-
-
-    
-    var paintBoardImg = new Image();
-    paintBoardImg.onload = function(){
-		paintBoard2.add({
-	    	type:'image',
-	    	imgObj:paintBoardImg,
-	    	w:paintBoard.width,
-	    	h:paintBoard.height,
-	    	x:0,
-	    	y:0
-	    });
-	    paintBoard2.reRender()
-    };
-
-    paintBoardImg.src = paintBoard.canvas.toDataURL();
+    //测试loadImage模块功能。
+    loadImage(['../public/img.jpg','../public/pointer.png'],function(success,imgList){
+    	console.log(success,imgList);
+        paintBoard.add({
+			type:'image',
+			imgObj:imgList[0].img,
+			w:300,
+			h:300,
+			x:20,
+			y:20
+		});
+        paintBoard.reRender()
+	})
 
 };
