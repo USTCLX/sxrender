@@ -29,6 +29,10 @@ class Storage {
             }
         }
     }
+
+    getAllObjects(){
+        return this.objects;
+    }
 }
 
 export default Storage;

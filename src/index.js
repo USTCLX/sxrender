@@ -4,13 +4,45 @@
 
 import * as Utils from './utils/utils';
 import {InertialAnimation, SpringAnimation} from './Animation';
-import {Rect,Circle} from './Graph';
+import GraphInterface from './Graph';
 import Storage from './storage/storage';
 import Painter from './painter/painter';
 
 
-//私有方法名
-const drawprogress = Symbol('drawProgress');
+/**
+ * SXRender类
+ * @param {String} id
+ * @param {Number} width
+ * @param {Number} height
+ * @param {Number} contentWidth
+ * @param {Number} contentHeight
+ * @param {String} backgroundColor
+ * @param {String/Object} backgroundImage
+ * @param {Boolean} drawScrollBar
+ */
+class SXRender2 {
+    constructor(opts) {
+        //basic attrs
+        this.id = opts.id||'';
+        this.width = opts.width||0;
+        this.height = opts.height||0;
+        this.contentWidth = opts.contentWidth||this.width;
+        this.contentHeight = opts.contentHeight||this.height;
+        this.backgroundColor = opts.backgroundColor||'';
+        this.backgroundImage = opts.backgroundImage||'';
+        this.drawScrollBar = opts.drawScrollBar||false;
+
+        //private attrs
+        this._canvas = null;
+        this._ctx = null;
+        this._backgroundCanvas = null;
+        this._backgroundCtx = null;
+        
+        this._scrollVEnabled = false;
+        this._scrollHEnabled = false;
+    }
+
+}
 
 let SXRender = function (opts) {
     var canvas, ctx, id, w, h, bgColor, contentW, contentH, drawScrollBar;
@@ -81,7 +113,7 @@ SXRender.prototype = {
         this.storage = new Storage();
 
         //painter
-        this.painter = new Painter(this.ctx,null,this.storage,this.springOffset);
+        this.painter = new Painter(this.canvas, this.ctx, null, null, this.storage);
 
         //animation
         this._animation = null;     //动画
@@ -130,156 +162,26 @@ SXRender.prototype = {
         }
         this.ctx.restore();
     },
-    /**
-     * 绘制小球函数
-     * @param  {obj} ctx    绘图上下文
-     * @param  {num} x      x坐标
-     * @param  {num} y      y坐标
-     * @param  {num} radius 半径
-     * @param  {string} color  颜色
-     * @return {[type]}        [description]
-     */
-    drawBall: function (opts) {
-        var x, y, radius, color;
-        var opts = opts || {};
-        var startAngle = Math.PI * 0;
-        var endAngle = Math.PI * 2;
-        var anticlockwise = false;
-
-        x = opts.x + this.springOffset.x;
-        y = opts.y + this.springOffset.y;
-        radius = opts.radius;
-        color = opts.fill;
-
-        this.ctx.save();
-        this.ctx.beginPath();
-        this.ctx.fillStyle = color;
-        this.ctx.arc(x, y, radius, startAngle, endAngle, anticlockwise);
-        this.ctx.fill();
-        this.ctx.closePath();
-        this.ctx.restore();
-    },
-    /**
-     * 清空一片区域
-     */
-    clearCtx: function (opts) {
-        var x, y, w, h;
-        var opts = opts || {};
-        x = opts.x || 0;
-        y = opts.y || 0;
-        w = opts.w || this.width;
-        h = opts.h || this.height;
-        this.ctx.clearRect(x, y, w, h)
-    },
-    /**
-     * 画一个矩形
-     */
-    drawRect: function (opts) {
-        var x, y, w, h, color;
-        var opts = opts || {};
-        x = opts.x + this.springOffset.x;
-        y = opts.y + this.springOffset.y;
-        w = opts.width;
-        h = opts.height;
-        color = opts.fill;
-        this.ctx.save();
-        this.ctx.fillStyle = color;
-        this.ctx.fillRect(x, y, w, h);
-        this.ctx.restore();
-    },
-    /**
-     * 绘制图片
-     */
-    drawImage: function (opts) {
-        var imgObj, x, y, w, h, dx, dy, dw, dh;
-        var opts = opts || {};
-        imgObj = opts.imgObj;
-        x = opts.x || 0;
-        y = opts.y || 0;
-        w = opts.w;
-        h = opts.h;
-        dx = opts.dx || 0;
-        dy = opts.dy || 0;
-        dw = opts.dw || 0;
-        dh = opts.dh || 0;
-        this.ctx.save();
-        if (dw && dh) {
-            this.ctx.drawImage(imgObj, x, y, w, h, dx, dy, dw, dh);
-        } else if (w && h) {
-            x += this.springOffset.x;
-            y += this.springOffset.y;
-            this.ctx.drawImage(imgObj, x, y, w, h);
-        } else {
-            this.ctx.drawImage(imgObj, x, y);
-        }
-        this.ctx.restore();
-    },
-    /**
-     * 重新绘制
-     * @return {[type]} [description]
-     */
-    reRender: function () {
-        var GraphType = Utils.GraphType;
-        this.clearCtx();
+    //重新绘制
+    render: function () {
         this.backgroundImg.content ? this.drawBackground() : null;
-        this.ctx.setTransform(1, 0, 0, 1, this.contentOffset.x+this.springOffset.x, this.contentOffset.y+this.springOffset.y);
-        // var objs = this.objects || [];
-        // for (var i = 0, il = objs.length; i < il; i++) {
-        //     switch (objs[i].type) {
-        //         case GraphType.Circle:
-        //             this.drawBall(objs[i]);
-        //             break;
-        //         case GraphType.Rect:
-        //             this.drawRect(objs[i]);
-        //             break;
-        //         case GraphType.Image:
-        //             this.drawImage(objs[i]);
-        //             break;
-        //         default:
-        //             console.log('miss in reRender');
-        //             break;
-        //     }
-        // }
+        this.ctx.setTransform(1, 0, 0, 1, this.contentOffset.x + this.springOffset.x, this.contentOffset.y + this.springOffset.y);
         this.painter.renderAll();
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
         if (this.scrollHEnabled || this.scrollVEnabled && this.drawScrollBar) {
-            this[drawprogress]();
+            this.drawProgress();
         }
     },
-    /**
-     * 寻找物体
-     * @param id
-     * @returns {*}
-     */
-    findObjById: function (id) {
-        for (var i = 0, il = this.objects.length; i < il; i++) {
-            if (this.objects[i].id === id) {
-                return this.objects[i];
-            }
-        }
-        return null;
-    },
-    /**
-     * 增加物体
-     * @param obj
-     */
+    //将绘图实例添加至画布并渲染。
     add: function (obj) {
-        this.objects.push(obj);
         this.storage.addObj(obj);
-        console.log('storage',this.storage);
-        this.reRender();
-    },
-    Rect: function (opts) {
-        return new Rect(opts);
-    },
-    Circle:function(opts){
-        return new Circle(opts);
+        this.render();
     },
     /**
-     * 绘制进度条
+     * 绘制滚动条
      * @private
      */
-    [drawprogress]: function () {
+    drawProgress: function () {
         var top, left, width, height, offset;
 
         if (this.scrollVEnabled) {
@@ -314,6 +216,8 @@ SXRender.prototype = {
     }
 };
 
+Utils.mixin(SXRender,GraphInterface,false);
+
 /**
  * 鼠标按下事件。
  * @param  {[type]} e [description]
@@ -322,7 +226,7 @@ SXRender.prototype = {
 function mouseDownHandler(e) {
     var pos = Utils.getRelativeRect(e);
 
-    this.selectObjId = Utils.checkClickElm(this.objects, pos, this.contentOffset);
+    this.selectObjId = Utils.checkClickElm(this.storage.getAllObjects(), pos, this.contentOffset);
     this.mouseDownPos = pos;
     if (!!this.selectObjId) {
         //选中物体
@@ -383,7 +287,7 @@ function mouseUpHandler(e) {
                 this._animation = new SpringAnimation(null, '', 0, 12, 180, this.springOffset, {x: 0, y: 0}, 800);
                 this._animation.onFrameCB = function () {
                     self.springOffset = this.state.curValue;
-                    self.reRender();
+                    self.render();
                 };
                 this._animation.start();
             } else {
@@ -414,7 +318,7 @@ function mouseUpHandler(e) {
                             vy = (this.state.curValue.y - this.lastState.curValue.y) / (Date.now() - this._lastTimeStamp) * 1000;
                             // this.stop();
                         }
-                        self.reRender();
+                        self.render();
                         if (Math.abs(vx) > 50 || Math.abs(vy) > 50 && (!(vx && vy))) {
                             this.stop();
                             //需要开启spring弹簧动画,只有在单方向是开启
@@ -422,22 +326,22 @@ function mouseUpHandler(e) {
                                 self._animation = new SpringAnimation(null, '', vy, 20, 180, 0, 0, 800, 1);
                                 self._animation.onFrameCB = function () {
                                     self.springOffset.y = this.state.curValue;
-                                    self.reRender();
+                                    self.render();
                                 };
                                 self._animation.didStopCB = function () {
                                     self.springOffset.y = this.state.curValue;
-                                    self.reRender();
+                                    self.render();
                                 };
                                 self._animation.start();
                             } else if (Math.abs(vx) > 50) {
                                 self._animation = new SpringAnimation(null, '', vx, 20, 180, 0, 0, 2000, 1);
                                 self._animation.onFrameCB = function () {
                                     self.springOffset.x = this.state.curValue;
-                                    self.reRender();
+                                    self.render();
                                 };
                                 self._animation.didStopCB = function () {
                                     self.springOffset.x = this.state.curValue;
-                                    self.reRender();
+                                    self.render();
                                 };
                                 self._animation.start();
                             }
@@ -471,10 +375,10 @@ function mouseMoveHandler(e) {
         diff.y = pos.y - this.mouseDownPos.y;
         this.mouseDownPos.x = pos.x;
         this.mouseDownPos.y = pos.y;
-        selectObj = this.findObjById(this.selectObjId);
+        selectObj = this.storage.findById(this.selectObjId);
         selectObj.x += diff.x;
         selectObj.y += diff.y;
-        this.reRender();
+        this.render();
 
     } else if (this.scratching) {
         //扒动页面
@@ -529,7 +433,7 @@ function mouseMoveHandler(e) {
                     }
                 }
             }
-            this.reRender()
+            this.render()
         }
 
     }

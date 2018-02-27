@@ -126,6 +126,26 @@ const checkType = function (obj) {
     return str.slice(8, str.length - 1).toLowerCase();
 };
 
+
+/**
+ * 修饰器/合成器
+ * @param {Object/Function} target
+ * @param {Object/Function} source
+ * @param {boolean} overlay 是否覆盖
+ */
+const mixin = function (target, source, overlay) {
+    target = 'prototype' in target ? target.prototype : target;
+    source = 'prototype' in source ? source.prototype : source;
+
+    for (var key in source) {
+        if (source.hasOwnProperty(key) && (overlay ? source[key] != null : target[key] == null)) {
+            target[key] = source[key];
+        }
+    }
+    return target;
+};
+
+
 const BaseType = {
     String: 'string',
     Object: 'object',
@@ -142,4 +162,4 @@ const GraphType = {
     Image: 'SX-Image'
 };
 
-export {getRelativeRect, rubberBanding, checkClickElm, genGUID, deepClone, checkType, BaseType, GraphType};
+export {getRelativeRect, rubberBanding, checkClickElm, genGUID, deepClone, checkType, mixin, BaseType, GraphType};

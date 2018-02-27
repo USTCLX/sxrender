@@ -226,6 +226,24 @@ var checkType = function checkType(obj) {
     return str.slice(8, str.length - 1).toLowerCase();
 };
 
+/**
+ * 修饰器/合成器
+ * @param {Object/Function} target
+ * @param {Object/Function} source
+ * @param {boolean} overlay 是否覆盖
+ */
+var mixin = function mixin(target, source, overlay) {
+    target = 'prototype' in target ? target.prototype : target;
+    source = 'prototype' in source ? source.prototype : source;
+
+    for (var key in source) {
+        if (source.hasOwnProperty(key) && (overlay ? source[key] != null : target[key] == null)) {
+            target[key] = source[key];
+        }
+    }
+    return target;
+};
+
 var BaseType = {
     String: 'string',
     Object: 'object',
@@ -831,34 +849,34 @@ EventDispatcher.prototype.off = function (event, handler) {
  */
 
 var Graph = function (_EventDispatcher) {
-    inherits(Graph, _EventDispatcher);
+        inherits(Graph, _EventDispatcher);
 
-    function Graph(opts) {
-        classCallCheck(this, Graph);
+        function Graph(opts) {
+                classCallCheck(this, Graph);
 
-        var _this = possibleConstructorReturn(this, (Graph.__proto__ || Object.getPrototypeOf(Graph)).call(this));
+                var _this = possibleConstructorReturn(this, (Graph.__proto__ || Object.getPrototypeOf(Graph)).call(this));
 
-        opts = opts || {};
+                opts = opts || {};
 
-        //shape
-        _this.x = opts.x || 0;
-        _this.y = opts.y || 0;
-        _this.width = opts.width || 0;
-        _this.height = opts.height || 0;
+                //shape
+                _this.x = opts.x || 0;
+                _this.y = opts.y || 0;
+                _this.width = opts.width || 0;
+                _this.height = opts.height || 0;
 
-        //style
-        _this.fill = opts.fill || '';
-        _this.stroke = opts.stroke || '';
-        _this.lineWidth = opts.lineWidth || 1;
+                //style
+                _this.fill = opts.fill || '';
+                _this.stroke = opts.stroke || '';
+                _this.lineWidth = opts.lineWidth || 1;
 
-        //others
-        _this.id = opts.id || genGUID();
-        _this.draggable = opts.draggable || false;
+                //others
+                _this.id = opts.id || genGUID();
+                _this.draggable = opts.draggable || false;
 
-        return _this;
-    }
+                return _this;
+        }
 
-    return Graph;
+        return Graph;
 }(EventDispatcher);
 
 //old fashion
@@ -930,6 +948,17 @@ var Circle = function (_Graph) {
  * 对外暴露图形接口
  */
 
+var GraphInterface = {
+
+    Rect: function Rect$$1(opts) {
+        return new Rect(opts);
+    },
+
+    Circle: function Circle$$1(opts) {
+        return new Circle(opts);
+    }
+};
+
 /**
  * Created by lixiang on 2018/2/26.
  */
@@ -967,6 +996,11 @@ var Storage = function () {
                 }
             }
         }
+    }, {
+        key: "getAllObjects",
+        value: function getAllObjects() {
+            return this.objects;
+        }
     }]);
     return Storage;
 }();
@@ -976,11 +1010,13 @@ var Storage = function () {
  */
 
 var Painter = function () {
-    function Painter(ctx, backCtx, storage) {
+    function Painter(canvas, ctx, backCanvas, backCtx, storage) {
         classCallCheck(this, Painter);
 
-        this.backCtx = backCtx;
+        this.canvas = canvas;
+        this.backCanvas = backCanvas;
         this.ctx = ctx;
+        this.backCtx = backCtx;
         this.storage = storage;
         this.objects = this.storage.objects;
     }
@@ -989,14 +1025,18 @@ var Painter = function () {
         key: 'renderAll',
         value: function renderAll() {
             var objs = this.objects;
+            //clear zone
+            clearCtx(this.ctx, { w: this.canvas.width, h: this.canvas.height });
             for (var i = 0, il = objs.length; i < il; i++) {
                 switch (objs[i].type) {
                     case GraphType.Rect:
                         drawRect(this.ctx, objs[i]);
                         break;
                     case GraphType.Circle:
+                        drawCircle(this.ctx, objs[i]);
                         break;
                     case GraphType.Image:
+                        drawImage(this.ctx, objs[i]);
                         break;
                     default:
                         console.error('not match type in render all');
@@ -1008,6 +1048,16 @@ var Painter = function () {
     return Painter;
 }();
 
+function clearCtx(ctx, opts) {
+    var x, y, w, h;
+    var opts = opts || {};
+    x = opts.x || 0;
+    y = opts.y || 0;
+    w = opts.w || 0;
+    h = opts.h || 0;
+    ctx.clearRect(x, y, w, h);
+}
+
 function drawRect(ctx, obj) {
     var x, y, w, h, color;
     x = obj.x;
@@ -1018,6 +1068,48 @@ function drawRect(ctx, obj) {
     ctx.save();
     ctx.fillStyle = color;
     ctx.fillRect(x, y, w, h);
+    ctx.restore();
+}
+
+function drawCircle(ctx, obj) {
+    var x, y, radius, color;
+    var startAngle = Math.PI * 0;
+    var endAngle = Math.PI * 2;
+    var anticlockwise = false;
+
+    x = obj.x;
+    y = obj.y;
+    radius = obj.radius;
+    color = obj.fill;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.fillStyle = color;
+    ctx.arc(x, y, radius, startAngle, endAngle, anticlockwise);
+    ctx.fill();
+    ctx.closePath();
+    ctx.restore();
+}
+
+function drawImage(ctx, obj) {
+    var imgObj, x, y, w, h, dx, dy, dw, dh;
+    imgObj = obj.imgObj;
+    x = obj.x || 0;
+    y = obj.y || 0;
+    w = obj.w;
+    h = obj.h;
+    dx = obj.dx || 0;
+    dy = obj.dy || 0;
+    dw = obj.dw || 0;
+    dh = obj.dh || 0;
+    ctx.save();
+    if (dw && dh) {
+        ctx.drawImage(imgObj, x, y, w, h, dx, dy, dw, dh);
+    } else if (w && h) {
+        ctx.drawImage(imgObj, x, y, w, h);
+    } else {
+        ctx.drawImage(imgObj, x, y);
+    }
     ctx.restore();
 }
 
@@ -1096,7 +1188,7 @@ SXRender.prototype = defineProperty({
         this.storage = new Storage();
 
         //painter
-        this.painter = new Painter(this.ctx, null, this.storage, this.springOffset);
+        this.painter = new Painter(this.canvas, this.ctx, null, null, this.storage);
 
         //animation
         this._animation = null; //动画
@@ -1144,149 +1236,20 @@ SXRender.prototype = defineProperty({
         }
         this.ctx.restore();
     },
-    /**
-     * 绘制小球函数
-     * @param  {obj} ctx    绘图上下文
-     * @param  {num} x      x坐标
-     * @param  {num} y      y坐标
-     * @param  {num} radius 半径
-     * @param  {string} color  颜色
-     * @return {[type]}        [description]
-     */
-    drawBall: function drawBall(opts) {
-        var x, y, radius, color;
-        var opts = opts || {};
-        var startAngle = Math.PI * 0;
-        var endAngle = Math.PI * 2;
-        var anticlockwise = false;
-
-        x = opts.x + this.springOffset.x;
-        y = opts.y + this.springOffset.y;
-        radius = opts.radius;
-        color = opts.fill;
-
-        this.ctx.save();
-        this.ctx.beginPath();
-        this.ctx.fillStyle = color;
-        this.ctx.arc(x, y, radius, startAngle, endAngle, anticlockwise);
-        this.ctx.fill();
-        this.ctx.closePath();
-        this.ctx.restore();
-    },
-    /**
-     * 清空一片区域
-     */
-    clearCtx: function clearCtx(opts) {
-        var x, y, w, h;
-        var opts = opts || {};
-        x = opts.x || 0;
-        y = opts.y || 0;
-        w = opts.w || this.width;
-        h = opts.h || this.height;
-        this.ctx.clearRect(x, y, w, h);
-    },
-    /**
-     * 画一个矩形
-     */
-    drawRect: function drawRect(opts) {
-        var x, y, w, h, color;
-        var opts = opts || {};
-        x = opts.x + this.springOffset.x;
-        y = opts.y + this.springOffset.y;
-        w = opts.width;
-        h = opts.height;
-        color = opts.fill;
-        this.ctx.save();
-        this.ctx.fillStyle = color;
-        this.ctx.fillRect(x, y, w, h);
-        this.ctx.restore();
-    },
-    /**
-     * 绘制图片
-     */
-    drawImage: function drawImage(opts) {
-        var imgObj, x, y, w, h, dx, dy, dw, dh;
-        var opts = opts || {};
-        imgObj = opts.imgObj;
-        x = opts.x || 0;
-        y = opts.y || 0;
-        w = opts.w;
-        h = opts.h;
-        dx = opts.dx || 0;
-        dy = opts.dy || 0;
-        dw = opts.dw || 0;
-        dh = opts.dh || 0;
-        this.ctx.save();
-        if (dw && dh) {
-            this.ctx.drawImage(imgObj, x, y, w, h, dx, dy, dw, dh);
-        } else if (w && h) {
-            x += this.springOffset.x;
-            y += this.springOffset.y;
-            this.ctx.drawImage(imgObj, x, y, w, h);
-        } else {
-            this.ctx.drawImage(imgObj, x, y);
-        }
-        this.ctx.restore();
-    },
-    /**
-     * 重新绘制
-     * @return {[type]} [description]
-     */
-    reRender: function reRender() {
-        this.clearCtx();
+    //重新绘制
+    render: function render() {
         this.backgroundImg.content ? this.drawBackground() : null;
         this.ctx.setTransform(1, 0, 0, 1, this.contentOffset.x + this.springOffset.x, this.contentOffset.y + this.springOffset.y);
-        // var objs = this.objects || [];
-        // for (var i = 0, il = objs.length; i < il; i++) {
-        //     switch (objs[i].type) {
-        //         case GraphType.Circle:
-        //             this.drawBall(objs[i]);
-        //             break;
-        //         case GraphType.Rect:
-        //             this.drawRect(objs[i]);
-        //             break;
-        //         case GraphType.Image:
-        //             this.drawImage(objs[i]);
-        //             break;
-        //         default:
-        //             console.log('miss in reRender');
-        //             break;
-        //     }
-        // }
         this.painter.renderAll();
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
         if (this.scrollHEnabled || this.scrollVEnabled && this.drawScrollBar) {
             this[drawprogress]();
         }
     },
-    /**
-     * 寻找物体
-     * @param id
-     * @returns {*}
-     */
-    findObjById: function findObjById(id) {
-        for (var i = 0, il = this.objects.length; i < il; i++) {
-            if (this.objects[i].id === id) {
-                return this.objects[i];
-            }
-        }
-        return null;
-    },
-    /**
-     * 增加物体
-     * @param obj
-     */
+    //将绘图实例添加至画布并渲染。
     add: function add(obj) {
-        this.objects.push(obj);
         this.storage.addObj(obj);
-        console.log('storage', this.storage);
-        this.reRender();
-    },
-    Rect: function Rect$$1(opts) {
-        return new Rect(opts);
-    },
-    Circle: function Circle$$1(opts) {
-        return new Circle(opts);
+        this.render();
     }
 }, drawprogress, function () {
     var top, left, width, height, offset;
@@ -1321,6 +1284,8 @@ SXRender.prototype = defineProperty({
     }
 });
 
+mixin(SXRender, GraphInterface, false);
+
 /**
  * 鼠标按下事件。
  * @param  {[type]} e [description]
@@ -1329,7 +1294,7 @@ SXRender.prototype = defineProperty({
 function mouseDownHandler(e) {
     var pos = getRelativeRect(e);
 
-    this.selectObjId = checkClickElm(this.objects, pos, this.contentOffset);
+    this.selectObjId = checkClickElm(this.storage.getAllObjects(), pos, this.contentOffset);
     this.mouseDownPos = pos;
     if (!!this.selectObjId) {
         //选中物体
@@ -1390,7 +1355,7 @@ function mouseUpHandler(e) {
                 this._animation = new SpringAnimation(null, '', 0, 12, 180, this.springOffset, { x: 0, y: 0 }, 800);
                 this._animation.onFrameCB = function () {
                     self.springOffset = this.state.curValue;
-                    self.reRender();
+                    self.render();
                 };
                 this._animation.start();
             } else {
@@ -1423,7 +1388,7 @@ function mouseUpHandler(e) {
                             vy = (this.state.curValue.y - this.lastState.curValue.y) / (Date.now() - this._lastTimeStamp) * 1000;
                             // this.stop();
                         }
-                        self.reRender();
+                        self.render();
                         if (Math.abs(vx) > 50 || Math.abs(vy) > 50 && !(vx && vy)) {
                             this.stop();
                             //需要开启spring弹簧动画,只有在单方向是开启
@@ -1431,22 +1396,22 @@ function mouseUpHandler(e) {
                                 self._animation = new SpringAnimation(null, '', vy, 20, 180, 0, 0, 800, 1);
                                 self._animation.onFrameCB = function () {
                                     self.springOffset.y = this.state.curValue;
-                                    self.reRender();
+                                    self.render();
                                 };
                                 self._animation.didStopCB = function () {
                                     self.springOffset.y = this.state.curValue;
-                                    self.reRender();
+                                    self.render();
                                 };
                                 self._animation.start();
                             } else if (Math.abs(vx) > 50) {
                                 self._animation = new SpringAnimation(null, '', vx, 20, 180, 0, 0, 2000, 1);
                                 self._animation.onFrameCB = function () {
                                     self.springOffset.x = this.state.curValue;
-                                    self.reRender();
+                                    self.render();
                                 };
                                 self._animation.didStopCB = function () {
                                     self.springOffset.x = this.state.curValue;
-                                    self.reRender();
+                                    self.render();
                                 };
                                 self._animation.start();
                             }
@@ -1480,10 +1445,10 @@ function mouseMoveHandler(e) {
         diff.y = pos.y - this.mouseDownPos.y;
         this.mouseDownPos.x = pos.x;
         this.mouseDownPos.y = pos.y;
-        selectObj = this.findObjById(this.selectObjId);
+        selectObj = this.storage.findById(this.selectObjId);
         selectObj.x += diff.x;
         selectObj.y += diff.y;
-        this.reRender();
+        this.render();
     } else if (this.scratching) {
         //扒动页面
 
@@ -1537,7 +1502,7 @@ function mouseMoveHandler(e) {
                     }
                 }
             }
-            this.reRender();
+            this.render();
         }
     }
 }

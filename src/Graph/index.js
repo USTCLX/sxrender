@@ -6,6 +6,13 @@
 import Rect from './Rect';
 import Circle from './Circle';
 
-export {Rect,Circle};
+const GraphInterface = {
+
+    Rect: (opts) => new Rect(opts),
+
+    Circle: (opts) => new Circle(opts)
+};
+
+export default GraphInterface;
 
 
