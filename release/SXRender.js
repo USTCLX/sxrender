@@ -20,9 +20,29 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 
 
 
+var classCallCheck = function (instance, Constructor) {
+  if (!(instance instanceof Constructor)) {
+    throw new TypeError("Cannot call a class as a function");
+  }
+};
 
+var createClass = function () {
+  function defineProperties(target, props) {
+    for (var i = 0; i < props.length; i++) {
+      var descriptor = props[i];
+      descriptor.enumerable = descriptor.enumerable || false;
+      descriptor.configurable = true;
+      if ("value" in descriptor) descriptor.writable = true;
+      Object.defineProperty(target, descriptor.key, descriptor);
+    }
+  }
 
-
+  return function (Constructor, protoProps, staticProps) {
+    if (protoProps) defineProperties(Constructor.prototype, protoProps);
+    if (staticProps) defineProperties(Constructor, staticProps);
+    return Constructor;
+  };
+}();
 
 
 
@@ -41,6 +61,42 @@ var defineProperty = function (obj, key, value) {
   }
 
   return obj;
+};
+
+
+
+var inherits = function (subClass, superClass) {
+  if (typeof superClass !== "function" && superClass !== null) {
+    throw new TypeError("Super expression must either be null or a function, not " + typeof superClass);
+  }
+
+  subClass.prototype = Object.create(superClass && superClass.prototype, {
+    constructor: {
+      value: subClass,
+      enumerable: false,
+      writable: true,
+      configurable: true
+    }
+  });
+  if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass;
+};
+
+
+
+
+
+
+
+
+
+
+
+var possibleConstructorReturn = function (self, call) {
+  if (!self) {
+    throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
+  }
+
+  return call && (typeof call === "object" || typeof call === "function") ? call : self;
 };
 
 /**
@@ -79,17 +135,17 @@ var checkClickElm = function checkClickElm(objs, clickPos, contentOffset) {
             continue;
         }
         switch (obj.type) {
-            case 'ball':
+            case GraphType.Circle:
                 if (pos.x > obj.x + contentOffset.x - obj.radius && pos.x < obj.x + contentOffset.x + obj.radius && pos.y > obj.y + contentOffset.y - obj.radius && pos.y < obj.y + contentOffset.y + obj.radius) {
                     return obj.id;
                 }
                 break;
-            case 'rect':
-                if (pos.x > obj.x + contentOffset.x && pos.x < obj.x + contentOffset.x + obj.w && pos.y > obj.y + contentOffset.y && pos.y < obj.y + contentOffset.y + obj.h) {
+            case GraphType.Rect:
+                if (pos.x > obj.x + contentOffset.x && pos.x < obj.x + contentOffset.x + obj.width && pos.y > obj.y + contentOffset.y && pos.y < obj.y + contentOffset.y + obj.height) {
                     return obj.id;
                 }
                 break;
-            case 'image':
+            case GraphType.Image:
                 return obj.id;
                 break;
             default:
@@ -133,7 +189,7 @@ var genGUID = function genGUID() {
  */
 var deepClone = function deepClone(values) {
     var copy;
-    if (null === values || "object" !== (typeof values === 'undefined' ? 'undefined' : _typeof(values))) {
+    if (null === values || "object" !== (typeof values === "undefined" ? "undefined" : _typeof(values))) {
         return values;
     }
 
@@ -160,6 +216,48 @@ var deepClone = function deepClone(values) {
         }
         return copy;
     }
+};
+
+/**
+ * 返回对象类型，小写字符串
+ */
+var checkType = function checkType(obj) {
+    var str = Object.prototype.toString.call(obj);
+    return str.slice(8, str.length - 1).toLowerCase();
+};
+
+/**
+ * 修饰器/合成器
+ * @param {Object/Function} target
+ * @param {Object/Function} source
+ * @param {boolean} overlay 是否覆盖
+ */
+var mixin = function mixin(target, source, overlay) {
+    target = 'prototype' in target ? target.prototype : target;
+    source = 'prototype' in source ? source.prototype : source;
+
+    for (var key in source) {
+        if (source.hasOwnProperty(key) && (overlay ? source[key] != null : target[key] == null)) {
+            target[key] = source[key];
+        }
+    }
+    return target;
+};
+
+var BaseType = {
+    String: 'string',
+    Object: 'object',
+    Function: 'function',
+    Boolean: 'boolean',
+    Array: 'array',
+    RegExp: 'regexp',
+    Number: 'number'
+};
+
+var GraphType = {
+    Rect: 'SX-Rect',
+    Circle: 'SX-Circle',
+    Image: 'SX-Image'
 };
 
 /**
@@ -637,6 +735,384 @@ Object.assign(InertialAnimation.prototype, {
     }
 });
 
+//事件分发类
+function EventDispatcher() {
+    this._handlers = {};
+}
+
+/**
+ * 事件监听器
+ * @param event  事件名称
+ * @param handler 处理函数
+ * @param context  处理函数上下文
+ */
+EventDispatcher.prototype.on = function (event, handler, context) {
+    if (typeof this._handlers[event] === 'undefined') {
+        this._handlers[event] = [];
+    }
+    if (checkType(handler) === BaseType.Function) {
+        this._handlers[event].push({
+            h: handler,
+            one: false,
+            ctx: context || this
+        });
+    }
+};
+
+/**
+ * 单次事件监听器
+ * @param event  事件名称
+ * @param handler 处理函数
+ * @param context 处理函数上下文
+ */
+EventDispatcher.prototype.once = function (event, handler, context) {
+    if (typeof this._handlers[event] === 'undefined') {
+        this._handlers[event] = [];
+    }
+    if (checkType(handler) === BaseType.Function) {
+        this._handlers[event].push({
+            h: handler,
+            one: true,
+            ctx: context || this
+        });
+    }
+};
+
+/**
+ * 事件分发器
+ * @param event 事件名称
+ */
+EventDispatcher.prototype.trigger = function (event) {
+    if (checkType(event) === BaseType.String) {
+        event = { type: event };
+    }
+    if (!event.target) {
+        event.target = this;
+    }
+    if (!event.type) {
+        throw new Error("Event object missing 'type' property");
+    }
+    if (checkType(this._handlers[event.type]) === BaseType.Array) {
+        var _h = this._handlers;
+
+        for (var i = 0, il = _h.length; i < il; i++) {
+            _h[i]['h'].call(_h[i]['ctx'], event);
+        }
+    }
+};
+
+/**
+ * 带有执行环境的事件分发
+ * @param event
+ * @param context
+ */
+EventDispatcher.prototype.triggerWithCtx = function (event, context) {
+    if (checkType(event) === BaseType.String) {
+        event = { type: event };
+    }
+    if (!event.target) {
+        event.target = this;
+    }
+    if (!event.type) {
+        throw new Error("Event object missing 'type' property");
+    }
+    if (checkType(this._handlers[event.type]) === BaseType.Array) {
+        var _h = this._handlers;
+
+        for (var i = 0, il = _h.length; i < il; i++) {
+            _h[i]['h'].call(context, event);
+        }
+    }
+};
+
+/**
+ * 取消事件监听
+ * @param event 事件名称
+ */
+EventDispatcher.prototype.off = function (event, handler) {
+    var h;
+    if (checkType(this._handlers[event]) === BaseType.Array) {
+        h = this._handlers[event];
+        for (var i = 0, il = h.length; i < il; i++) {
+            if (h[i]['h'] === handler) {
+                h.splice(i, 1);
+                break;
+            }
+        }
+    }
+};
+
+/**
+ * 图形基类
+ * @param opts
+ * @constructor
+ */
+
+var Graph = function (_EventDispatcher) {
+        inherits(Graph, _EventDispatcher);
+
+        function Graph(opts) {
+                classCallCheck(this, Graph);
+
+                var _this = possibleConstructorReturn(this, (Graph.__proto__ || Object.getPrototypeOf(Graph)).call(this));
+
+                opts = opts || {};
+
+                //shape
+                _this.x = opts.x || 0;
+                _this.y = opts.y || 0;
+                _this.width = opts.width || 0;
+                _this.height = opts.height || 0;
+
+                //style
+                _this.fill = opts.fill || '';
+                _this.stroke = opts.stroke || '';
+                _this.lineWidth = opts.lineWidth || 1;
+
+                //others
+                _this.id = opts.id || genGUID();
+                _this.draggable = opts.draggable || false;
+
+                return _this;
+        }
+
+        return Graph;
+}(EventDispatcher);
+
+//old fashion
+// function Graph(opts) {
+//     opts = opts || {};
+//
+//     EventDispatcher.call(this);
+//
+//     //shape
+//     this.x = opts.x || 0;
+//     this.y = opts.y || 0;
+//     this.width = opts.width || 20;
+//     this.height = opts.height || 20;
+//
+//     //style
+//     this.fill = opts.fill;
+//     this.stroke = opts.stroke;
+//     this.lineWidth = opts.lineWidth;
+//
+//     //others
+//     this.id = opts.id || genGUID();
+// }
+//
+// Graph.prototype = Object.create(EventDispatcher);
+// Graph.prototype.constructor = Graph;
+
+/**
+ * Created by lixiang on 2018/2/26.
+ */
+
+var Rect = function (_Graph) {
+    inherits(Rect, _Graph);
+
+    function Rect(opts) {
+        classCallCheck(this, Rect);
+
+        var _this = possibleConstructorReturn(this, (Rect.__proto__ || Object.getPrototypeOf(Rect)).call(this, opts));
+
+        _this.type = GraphType.Rect;
+        return _this;
+    }
+
+    return Rect;
+}(Graph);
+
+/**
+ * Created by lixiang on 2018/2/26.
+ */
+var Circle = function (_Graph) {
+    inherits(Circle, _Graph);
+
+    function Circle(opts) {
+        classCallCheck(this, Circle);
+
+        opts = opts || {};
+
+        var _this = possibleConstructorReturn(this, (Circle.__proto__ || Object.getPrototypeOf(Circle)).call(this, opts));
+
+        _this.radius = opts.radius || 0;
+        _this.type = GraphType.Circle;
+        return _this;
+    }
+
+    return Circle;
+}(Graph);
+
+/**
+ * Created by lixiang on 2018/2/26.
+ * 对外暴露图形接口
+ */
+
+var GraphInterface = {
+
+    Rect: function Rect$$1(opts) {
+        return new Rect(opts);
+    },
+
+    Circle: function Circle$$1(opts) {
+        return new Circle(opts);
+    }
+};
+
+/**
+ * Created by lixiang on 2018/2/26.
+ */
+
+var Storage = function () {
+    function Storage() {
+        classCallCheck(this, Storage);
+
+        this.objects = [];
+    }
+
+    createClass(Storage, [{
+        key: "addObj",
+        value: function addObj(obj) {
+            this.objects.push(obj);
+        }
+    }, {
+        key: "findById",
+        value: function findById(id) {
+            var objs = this.objects;
+            for (var i = 0, il = objs.length; i < il; i++) {
+                if (objs[i].id === id) {
+                    return objs[i];
+                }
+            }
+        }
+    }, {
+        key: "deleteById",
+        value: function deleteById(id) {
+            var objs = this.objects;
+            for (var i = 0, il = objs.length; i < il; i++) {
+                if (objs[i].id === id) {
+                    objs.splice(i, 1);
+                    return;
+                }
+            }
+        }
+    }, {
+        key: "getAllObjects",
+        value: function getAllObjects() {
+            return this.objects;
+        }
+    }]);
+    return Storage;
+}();
+
+/**
+ * Created by lixiang on 2018/2/26.
+ */
+
+var Painter = function () {
+    function Painter(canvas, ctx, backCanvas, backCtx, storage) {
+        classCallCheck(this, Painter);
+
+        this.canvas = canvas;
+        this.backCanvas = backCanvas;
+        this.ctx = ctx;
+        this.backCtx = backCtx;
+        this.storage = storage;
+        this.objects = this.storage.objects;
+    }
+
+    createClass(Painter, [{
+        key: 'renderAll',
+        value: function renderAll() {
+            var objs = this.objects;
+            //clear zone
+            clearCtx(this.ctx, { w: this.canvas.width, h: this.canvas.height });
+            for (var i = 0, il = objs.length; i < il; i++) {
+                switch (objs[i].type) {
+                    case GraphType.Rect:
+                        drawRect(this.ctx, objs[i]);
+                        break;
+                    case GraphType.Circle:
+                        drawCircle(this.ctx, objs[i]);
+                        break;
+                    case GraphType.Image:
+                        drawImage(this.ctx, objs[i]);
+                        break;
+                    default:
+                        console.error('not match type in render all');
+                        break;
+                }
+            }
+        }
+    }]);
+    return Painter;
+}();
+
+function clearCtx(ctx, opts) {
+    var x, y, w, h;
+    var opts = opts || {};
+    x = opts.x || 0;
+    y = opts.y || 0;
+    w = opts.w || 0;
+    h = opts.h || 0;
+    ctx.clearRect(x, y, w, h);
+}
+
+function drawRect(ctx, obj) {
+    var x, y, w, h, color;
+    x = obj.x;
+    y = obj.y;
+    w = obj.width;
+    h = obj.height;
+    color = obj.fill;
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, w, h);
+    ctx.restore();
+}
+
+function drawCircle(ctx, obj) {
+    var x, y, radius, color;
+    var startAngle = Math.PI * 0;
+    var endAngle = Math.PI * 2;
+    var anticlockwise = false;
+
+    x = obj.x;
+    y = obj.y;
+    radius = obj.radius;
+    color = obj.fill;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.fillStyle = color;
+    ctx.arc(x, y, radius, startAngle, endAngle, anticlockwise);
+    ctx.fill();
+    ctx.closePath();
+    ctx.restore();
+}
+
+function drawImage(ctx, obj) {
+    var imgObj, x, y, w, h, dx, dy, dw, dh;
+    imgObj = obj.imgObj;
+    x = obj.x || 0;
+    y = obj.y || 0;
+    w = obj.w;
+    h = obj.h;
+    dx = obj.dx || 0;
+    dy = obj.dy || 0;
+    dw = obj.dw || 0;
+    dh = obj.dh || 0;
+    ctx.save();
+    if (dw && dh) {
+        ctx.drawImage(imgObj, x, y, w, h, dx, dy, dw, dh);
+    } else if (w && h) {
+        ctx.drawImage(imgObj, x, y, w, h);
+    } else {
+        ctx.drawImage(imgObj, x, y);
+    }
+    ctx.restore();
+}
+
 /**
  * Created by lixiang on 2018/1/7.
  */
@@ -645,15 +1121,15 @@ Object.assign(InertialAnimation.prototype, {
 var drawprogress = Symbol('drawProgress');
 
 var SXRender = function SXRender(opts) {
-    var canvas, ctx, opts, id, w, h, bgColor, contentW, contentH, drawScrollBar;
+    var canvas, ctx, id, w, h, bgColor, contentW, contentH, drawScrollBar;
     opts = opts || {};
 
     id = opts.id || '';
-    w = opts.w;
-    h = opts.h;
+    w = opts.width;
+    h = opts.height;
     bgColor = opts.backgroundColor || '';
-    contentW = opts.contentW || w;
-    contentH = opts.contentH || h;
+    contentW = opts.contentWidth || w;
+    contentH = opts.contentHeight || h;
     drawScrollBar = opts.drawScrollBar || false;
 
     canvas = !!id ? document.getElementById(id) : document.createElement("canvas");
@@ -708,7 +1184,11 @@ SXRender.prototype = defineProperty({
         };
 
         //objs list
-        this.objs = [];
+        this.objects = [];
+        this.storage = new Storage();
+
+        //painter
+        this.painter = new Painter(this.canvas, this.ctx, null, null, this.storage);
 
         //animation
         this._animation = null; //动画
@@ -756,143 +1236,20 @@ SXRender.prototype = defineProperty({
         }
         this.ctx.restore();
     },
-    /**
-     * 绘制小球函数
-     * @param  {obj} ctx    绘图上下文
-     * @param  {num} x      x坐标
-     * @param  {num} y      y坐标
-     * @param  {num} radius 半径
-     * @param  {string} color  颜色
-     * @return {[type]}        [description]
-     */
-    drawBall: function drawBall(opts) {
-        var x, y, radius, color;
-        var opts = opts || {};
-        var startAngle = Math.PI * 0;
-        var endAngle = Math.PI * 2;
-        var anticlockwise = false;
-
-        x = opts.x + this.springOffset.x;
-        y = opts.y + this.springOffset.y;
-        radius = opts.radius;
-        color = opts.color;
-
-        this.ctx.save();
-        this.ctx.beginPath();
-        this.ctx.fillStyle = color;
-        this.ctx.arc(x, y, radius, startAngle, endAngle, anticlockwise);
-        this.ctx.fill();
-        this.ctx.closePath();
-        this.ctx.restore();
-    },
-    /**
-     * 清空一片区域
-     */
-    clearCtx: function clearCtx(opts) {
-        var x, y, w, h;
-        var opts = opts || {};
-        x = opts.x || 0;
-        y = opts.y || 0;
-        w = opts.w || this.width;
-        h = opts.h || this.height;
-        this.ctx.clearRect(x, y, w, h);
-    },
-    /**
-     * 画一个矩形
-     */
-    drawRect: function drawRect(opts) {
-        var x, y, w, h, color;
-        var opts = opts || {};
-        x = opts.x + this.springOffset.x;
-        y = opts.y + this.springOffset.y;
-        w = opts.w;
-        h = opts.h;
-        color = opts.color;
-        this.ctx.save();
-        this.ctx.fillStyle = color;
-        this.ctx.fillRect(x, y, w, h);
-        this.ctx.restore();
-    },
-    /**
-     * 绘制图片
-     */
-    drawImage: function drawImage(opts) {
-        var imgObj, x, y, w, h, dx, dy, dw, dh;
-        var opts = opts || {};
-        imgObj = opts.imgObj;
-        x = opts.x || 0;
-        y = opts.y || 0;
-        w = opts.w;
-        h = opts.h;
-        dx = opts.dx || 0;
-        dy = opts.dy || 0;
-        dw = opts.dw || 0;
-        dh = opts.dh || 0;
-        this.ctx.save();
-        if (dw && dh) {
-            this.ctx.drawImage(imgObj, x, y, w, h, dx, dy, dw, dh);
-        } else if (w && h) {
-            x += this.springOffset.x;
-            y += this.springOffset.y;
-            this.ctx.drawImage(imgObj, x, y, w, h);
-        } else {
-            this.ctx.drawImage(imgObj, x, y);
-        }
-        this.ctx.restore();
-    },
-    /**
-     * 重新绘制
-     * @return {[type]} [description]
-     */
-    reRender: function reRender() {
-        this.clearCtx();
+    //重新绘制
+    render: function render() {
         this.backgroundImg.content ? this.drawBackground() : null;
-        this.ctx.setTransform(1, 0, 0, 1, this.contentOffset.x, this.contentOffset.y);
-        var objs = this.objs || [];
-        for (var i = 0, il = objs.length; i < il; i++) {
-            switch (objs[i].type) {
-                case 'ball':
-                    this.drawBall(objs[i]);
-                    break;
-                case 'rect':
-                    this.drawRect(objs[i]);
-                    break;
-                case 'image':
-                    this.drawImage(objs[i]);
-                    break;
-                default:
-                    console.log('miss in reRender');
-                    break;
-            }
-        }
+        this.ctx.setTransform(1, 0, 0, 1, this.contentOffset.x + this.springOffset.x, this.contentOffset.y + this.springOffset.y);
+        this.painter.renderAll();
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
         if (this.scrollHEnabled || this.scrollVEnabled && this.drawScrollBar) {
             this[drawprogress]();
         }
     },
-    /**
-     * 寻找物体
-     * @param id
-     * @returns {*}
-     */
-    findObjById: function findObjById(id) {
-        for (var i = 0, il = this.objs.length; i < il; i++) {
-            if (this.objs[i].id === id) {
-                return this.objs[i];
-            }
-        }
-        return null;
-    },
-    /**
-     * 增加物体
-     * @param obj
-     */
+    //将绘图实例添加至画布并渲染。
     add: function add(obj) {
-        var o = {};
-        o = Object.assign(o, obj, {
-            id: genGUID()
-        });
-        this.objs.push(o);
+        this.storage.addObj(obj);
+        this.render();
     }
 }, drawprogress, function () {
     var top, left, width, height, offset;
@@ -927,6 +1284,8 @@ SXRender.prototype = defineProperty({
     }
 });
 
+mixin(SXRender, GraphInterface, false);
+
 /**
  * 鼠标按下事件。
  * @param  {[type]} e [description]
@@ -935,7 +1294,7 @@ SXRender.prototype = defineProperty({
 function mouseDownHandler(e) {
     var pos = getRelativeRect(e);
 
-    this.selectObjId = checkClickElm(this.objs, pos, this.contentOffset);
+    this.selectObjId = checkClickElm(this.storage.getAllObjects(), pos, this.contentOffset);
     this.mouseDownPos = pos;
     if (!!this.selectObjId) {
         //选中物体
@@ -996,7 +1355,7 @@ function mouseUpHandler(e) {
                 this._animation = new SpringAnimation(null, '', 0, 12, 180, this.springOffset, { x: 0, y: 0 }, 800);
                 this._animation.onFrameCB = function () {
                     self.springOffset = this.state.curValue;
-                    self.reRender();
+                    self.render();
                 };
                 this._animation.start();
             } else {
@@ -1029,7 +1388,7 @@ function mouseUpHandler(e) {
                             vy = (this.state.curValue.y - this.lastState.curValue.y) / (Date.now() - this._lastTimeStamp) * 1000;
                             // this.stop();
                         }
-                        self.reRender();
+                        self.render();
                         if (Math.abs(vx) > 50 || Math.abs(vy) > 50 && !(vx && vy)) {
                             this.stop();
                             //需要开启spring弹簧动画,只有在单方向是开启
@@ -1037,22 +1396,22 @@ function mouseUpHandler(e) {
                                 self._animation = new SpringAnimation(null, '', vy, 20, 180, 0, 0, 800, 1);
                                 self._animation.onFrameCB = function () {
                                     self.springOffset.y = this.state.curValue;
-                                    self.reRender();
+                                    self.render();
                                 };
                                 self._animation.didStopCB = function () {
                                     self.springOffset.y = this.state.curValue;
-                                    self.reRender();
+                                    self.render();
                                 };
                                 self._animation.start();
                             } else if (Math.abs(vx) > 50) {
                                 self._animation = new SpringAnimation(null, '', vx, 20, 180, 0, 0, 2000, 1);
                                 self._animation.onFrameCB = function () {
                                     self.springOffset.x = this.state.curValue;
-                                    self.reRender();
+                                    self.render();
                                 };
                                 self._animation.didStopCB = function () {
                                     self.springOffset.x = this.state.curValue;
-                                    self.reRender();
+                                    self.render();
                                 };
                                 self._animation.start();
                             }
@@ -1086,10 +1445,10 @@ function mouseMoveHandler(e) {
         diff.y = pos.y - this.mouseDownPos.y;
         this.mouseDownPos.x = pos.x;
         this.mouseDownPos.y = pos.y;
-        selectObj = this.findObjById(this.selectObjId);
+        selectObj = this.storage.findById(this.selectObjId);
         selectObj.x += diff.x;
         selectObj.y += diff.y;
-        this.reRender();
+        this.render();
     } else if (this.scratching) {
         //扒动页面
 
@@ -1143,7 +1502,7 @@ function mouseMoveHandler(e) {
                     }
                 }
             }
-            this.reRender();
+            this.render();
         }
     }
 }
