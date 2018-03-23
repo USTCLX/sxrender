@@ -146,6 +146,24 @@ const mixin = function (target, source, overlay) {
 };
 
 
+/**
+ * 简单的多对象扩展器，会自动覆盖
+ * @param target
+ * @param rest
+ * @returns {*}
+ */
+const extend = function (target, ...rest) {
+    for (let i = 0; i < rest.length; i++) {
+        let source = rest[i];
+        for (var key in source) {
+            if (source.hasOwnProperty(key)) {
+                target[key] = source[key];
+            }
+        }
+    }
+    return target;
+};
+
 const BaseType = {
     String: 'string',
     Object: 'object',
@@ -162,4 +180,15 @@ const GraphType = {
     Image: 'SX-Image'
 };
 
-export {getRelativeRect, rubberBanding, checkClickElm, genGUID, deepClone, checkType, mixin, BaseType, GraphType};
+export {
+    getRelativeRect,
+    rubberBanding,
+    checkClickElm,
+    genGUID,
+    deepClone,
+    checkType,
+    mixin,
+    extend,
+    BaseType,
+    GraphType
+};

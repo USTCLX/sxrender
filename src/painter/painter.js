@@ -5,19 +5,20 @@
 import {GraphType} from '../utils/utils';
 
 class Painter {
-    constructor(canvas, ctx, backCanvas, backCtx, storage) {
+    constructor(canvas, backCanvas, storage) {
         this.canvas = canvas;
         this.backCanvas = backCanvas;
-        this.ctx = ctx;
-        this.backCtx = backCtx;
         this.storage = storage;
         this.objects = this.storage.objects;
+
+        this.ctx = canvas.getContext('2d');
+        this.bgCtx = backCanvas.getContext('2d');
     }
 
     renderAll() {
         var objs = this.objects;
         //clear zone
-        clearCtx(this.ctx,{w:this.canvas.width,h:this.canvas.height});
+        clearCtx(this.ctx, {w: this.canvas.width, h: this.canvas.height});
         for (var i = 0, il = objs.length; i < il; i++) {
             switch (objs[i].type) {
                 case GraphType.Rect:
@@ -27,7 +28,7 @@ class Painter {
                     drawCircle(this.ctx, objs[i]);
                     break;
                 case GraphType.Image:
-                    drawImage(this.ctx,objs[i]);
+                    drawImage(this.ctx, objs[i]);
                     break;
                 default:
                     console.error('not match type in render all');
@@ -38,7 +39,7 @@ class Painter {
 
 }
 
-function clearCtx(ctx,opts) {
+function clearCtx(ctx, opts) {
     var x, y, w, h;
     var opts = opts || {};
     x = opts.x || 0;
