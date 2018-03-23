@@ -2,8 +2,9 @@
  * Created by lixiang on 2018/3/23.
  */
 
-import paninter from '../painter/painter';
-import storage from '../storage/storage';
+import EventDispatcher from './EventDispatcher'
+import Painter from '../painter/painter';
+import Storage from '../storage/storage';
 import {BaseType, checkType, mixin, extend} from "../utils/utils";
 
 
@@ -26,8 +27,10 @@ const DEFAULT_OPTIONS = {
 
 };
 
-class SXRender {
+class SXRender extends EventDispatcher {
     constructor(id, opts) {
+        super();
+
         if ((checkType(id) !== BaseType.String) || (checkType(opts) !== BaseType.Object)) {
             throw new Error('params type error!');
             return;
@@ -37,6 +40,7 @@ class SXRender {
         this._handleElements(id);
         this._handleInit();
 
+        return this;
     }
 
     _handleOptions(opts) {
@@ -65,17 +69,17 @@ class SXRender {
     _handleInit() {
 
         this._storage = new Storage();
-        this._painter = new Painter(this._canvasEle,this._bgCanvasEle,this._storage);
+        this._painter = new Painter(this._canvasEle, this._bgCanvasEle, this._storage);
 
         let bgColor = this.options.backgroundColor;
         let bgImage = this.options.backgroundImage;
 
-        if (!!bgColor&&(checkType(bgColor)===BaseType.String)) {
+        if (!!bgColor && (checkType(bgColor) === BaseType.String)) {
             this._bgCanvasEle.style.backgroundColor = bgColor;
         }
 
-        if(!!bgImage){
-
+        if (!!bgImage && (checkType(bgImage) === BaseType.String)) {
+            this._bgCanvasEle.style.background = bgImage;
         }
     }
 }

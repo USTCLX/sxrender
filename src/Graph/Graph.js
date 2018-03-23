@@ -1,4 +1,4 @@
-import EventDispatcher from './EventDispatcher';
+import EventDispatcher from '../core/EventDispatcher';
 import {genGUID} from '../utils/utils';
 
 /**
