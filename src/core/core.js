@@ -38,6 +38,7 @@ class SXRender extends EventDispatcher {
 
         this._handleOptions(opts);
         this._handleElements(id);
+        this._handleEvents();
         this._handleInit();
 
         return this;
@@ -64,6 +65,10 @@ class SXRender extends EventDispatcher {
         this._bgCanvasEle.style.position = "absolute";
         this._bgCanvasEle.style.width = this.options.width;
         this._bgCanvasEle.style.height = this.options.height;
+    }
+
+    _handleEvents(){
+        this._canvasEle.addEventListener("click",this,false);
     }
 
     _handleInit() {
