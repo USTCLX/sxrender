@@ -7,17 +7,32 @@
  * 获取元素内相对坐标
  * @param  {[type]} e [description]
  */
-const getRelativeRect = function (e) {
-    var x, y, DomRect;
+const getRelativeRect = function (ele) {
+    var DomRect;
 
-    x = e.clientX;
-    y = e.clientY;
-
-    DomRect = e.target.getBoundingClientRect();
+    DomRect = ele.target.getBoundingClientRect();
 
     return {
-        x: Math.round(x - DomRect.x),
-        y: Math.round(y - DomRect.y)
+        x: Math.round(ele.clientX - DomRect.x),
+        y: Math.round(ele.clientY - DomRect.y),
+    }
+};
+
+/**
+ * 重新包装event对象
+ * @param e原始event对象
+ */
+const eventUtil = function (ev, pre) {
+    let eleRect = getRelativeRect(ev);
+
+    if (ev.offsetX === undefined || ev.offsetY === undefined) {
+        ev.offsetX = eleRect.x;
+        ev.offsetY = eleRect.y;
+    }
+
+    if (ev.movementX === undefined || ev.movementY == undefined) {
+        ev.movementX = (pre.pointX === 0) ? 0 : (ev.pageX - pre.pointX);
+        ev.movementY = (pre.pointY === 0) ? 0 : (ev.pageY - pre.pointY);
     }
 };
 
@@ -164,6 +179,14 @@ const extend = function (target, ...rest) {
     return target;
 };
 
+/**
+ * 获取准确的当前时间
+ * @returns {number}
+ */
+const getNow = function(){
+    return window.performance && window.performance.now ? (window.performance.now() + window.performance.timing.navigationStart) : +new Date()
+};
+
 const BaseType = {
     String: 'string',
     Object: 'object',
@@ -182,6 +205,7 @@ const GraphType = {
 
 export {
     getRelativeRect,
+    eventUtil,
     rubberBanding,
     checkClickElm,
     genGUID,
@@ -189,6 +213,7 @@ export {
     checkType,
     mixin,
     extend,
+    getNow,
     BaseType,
     GraphType
 };

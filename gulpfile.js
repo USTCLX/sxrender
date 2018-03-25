@@ -60,6 +60,28 @@ gulp.task('imageloader',function(){
     })
 });
 
+gulp.task('newver',function(){
+    //rollup 打包js模块
+    return rollup.rollup({
+        input:'./src/core/core.js',
+        plugins:[
+            resolve(),
+            babel({
+                exclude: 'node_modules/**'
+            })
+        ]
+    }).then(function(bundle){
+        bundle.write({
+            // 产出文件使用 umd 规范（即兼容 amd cjs amd和 iife）
+            format: 'umd',
+            // iife 规范下的全局变量名称
+            name: 'SXRender',
+            // 产出的未压缩的文件名
+            file: './test/core.js'
+        })
+    })
+});
+
 gulp.task('default',['script'],function(){
     console.log('watching js modify...');
     gulp.watch('./src/*.js',['script']);

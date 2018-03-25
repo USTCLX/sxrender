@@ -48,20 +48,7 @@ var createClass = function () {
 
 
 
-var defineProperty = function (obj, key, value) {
-  if (key in obj) {
-    Object.defineProperty(obj, key, {
-      value: value,
-      enumerable: true,
-      configurable: true,
-      writable: true
-    });
-  } else {
-    obj[key] = value;
-  }
 
-  return obj;
-};
 
 
 
@@ -849,34 +836,34 @@ EventDispatcher.prototype.off = function (event, handler) {
  */
 
 var Graph = function (_EventDispatcher) {
-        inherits(Graph, _EventDispatcher);
+    inherits(Graph, _EventDispatcher);
 
-        function Graph(opts) {
-                classCallCheck(this, Graph);
+    function Graph(opts) {
+        classCallCheck(this, Graph);
 
-                var _this = possibleConstructorReturn(this, (Graph.__proto__ || Object.getPrototypeOf(Graph)).call(this));
+        var _this = possibleConstructorReturn(this, (Graph.__proto__ || Object.getPrototypeOf(Graph)).call(this));
 
-                opts = opts || {};
+        opts = opts || {};
 
-                //shape
-                _this.x = opts.x || 0;
-                _this.y = opts.y || 0;
-                _this.width = opts.width || 0;
-                _this.height = opts.height || 0;
+        //shape
+        _this.x = opts.x || 0;
+        _this.y = opts.y || 0;
+        _this.width = opts.width || 0;
+        _this.height = opts.height || 0;
 
-                //style
-                _this.fill = opts.fill || '';
-                _this.stroke = opts.stroke || '';
-                _this.lineWidth = opts.lineWidth || 1;
+        //style
+        _this.fill = opts.fill || '';
+        _this.stroke = opts.stroke || '';
+        _this.lineWidth = opts.lineWidth || 1;
 
-                //others
-                _this.id = opts.id || genGUID();
-                _this.draggable = opts.draggable || false;
+        //others
+        _this.id = opts.id || genGUID();
+        _this.draggable = opts.draggable || false;
 
-                return _this;
-        }
+        return _this;
+    }
 
-        return Graph;
+    return Graph;
 }(EventDispatcher);
 
 //old fashion
@@ -950,13 +937,13 @@ var Circle = function (_Graph) {
 
 var GraphInterface = {
 
-    Rect: function Rect$$1(opts) {
-        return new Rect(opts);
-    },
+  Rect: function Rect$$1(opts) {
+    return new Rect(opts);
+  },
 
-    Circle: function Circle$$1(opts) {
-        return new Circle(opts);
-    }
+  Circle: function Circle$$1(opts) {
+    return new Circle(opts);
+  }
 };
 
 /**
@@ -1010,15 +997,16 @@ var Storage = function () {
  */
 
 var Painter = function () {
-    function Painter(canvas, ctx, backCanvas, backCtx, storage) {
+    function Painter(canvas, backCanvas, storage) {
         classCallCheck(this, Painter);
 
         this.canvas = canvas;
         this.backCanvas = backCanvas;
-        this.ctx = ctx;
-        this.backCtx = backCtx;
         this.storage = storage;
         this.objects = this.storage.objects;
+
+        this.ctx = canvas.getContext('2d');
+        this.bgCtx = backCanvas.getContext('2d');
     }
 
     createClass(Painter, [{
@@ -1117,9 +1105,6 @@ function drawImage(ctx, obj) {
  * Created by lixiang on 2018/1/7.
  */
 
-//私有方法名
-var drawprogress = Symbol('drawProgress');
-
 var SXRender = function SXRender(opts) {
     var canvas, ctx, id, w, h, bgColor, contentW, contentH, drawScrollBar;
     opts = opts || {};
@@ -1142,7 +1127,7 @@ var SXRender = function SXRender(opts) {
     this.init(canvas, ctx, contentW, contentH, drawScrollBar);
 };
 
-SXRender.prototype = defineProperty({
+SXRender.prototype = {
     constructor: SXRender,
     init: function init(canvas, ctx, contentW, contentH, drawScrollBar) {
         //canvas
@@ -1243,46 +1228,51 @@ SXRender.prototype = defineProperty({
         this.painter.renderAll();
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
         if (this.scrollHEnabled || this.scrollVEnabled && this.drawScrollBar) {
-            this[drawprogress]();
+            this.drawProgress();
         }
     },
     //将绘图实例添加至画布并渲染。
     add: function add(obj) {
         this.storage.addObj(obj);
         this.render();
+    },
+    /**
+     * 绘制滚动条
+     * @private
+     */
+    drawProgress: function drawProgress() {
+        var top, left, width, height, offset;
+
+        if (this.scrollVEnabled) {
+            width = 4;
+            height = Math.round(this.height * this.height / this.contentH) - Math.abs(this.springOffset.y);
+            height = height < 10 ? 10 : height;
+            offset = this.springOffset.y < 0 ? this.springOffset.y : 0;
+            top = Math.round(-this.contentOffset.y * this.height / this.contentH) - offset;
+            top = top > this.height - 10 ? this.height - 10 : top;
+            left = this.width - width;
+
+            this.ctx.save();
+            this.ctx.fillStyle = '#888888';
+            this.ctx.fillRect(left, top, width, height);
+            this.ctx.restore();
+        }
+
+        if (this.scrollHEnabled) {
+            width = Math.round(this.width * this.width / this.contentW) - Math.abs(this.springOffset.x);
+            width = width < 10 ? 10 : width;
+            height = 4;
+
+            top = this.height - height;
+            offset = this.springOffset.x < 0 ? this.springOffset.x : 0;
+            left = Math.round(-this.contentOffset.x * this.width / this.contentW) - offset;
+            this.ctx.save();
+            this.ctx.fillStyle = '#888888';
+            this.ctx.fillRect(left, top, width, height);
+            this.ctx.restore();
+        }
     }
-}, drawprogress, function () {
-    var top, left, width, height, offset;
-
-    if (this.scrollVEnabled) {
-        width = 4;
-        height = Math.round(this.height * this.height / this.contentH) - Math.abs(this.springOffset.y);
-        height = height < 10 ? 10 : height;
-        offset = this.springOffset.y < 0 ? this.springOffset.y : 0;
-        top = Math.round(-this.contentOffset.y * this.height / this.contentH) - offset;
-        top = top > this.height - 10 ? this.height - 10 : top;
-        left = this.width - width;
-
-        this.ctx.save();
-        this.ctx.fillStyle = '#888888';
-        this.ctx.fillRect(left, top, width, height);
-        this.ctx.restore();
-    }
-
-    if (this.scrollHEnabled) {
-        width = Math.round(this.width * this.width / this.contentW) - Math.abs(this.springOffset.x);
-        width = width < 10 ? 10 : width;
-        height = 4;
-
-        top = this.height - height;
-        offset = this.springOffset.x < 0 ? this.springOffset.x : 0;
-        left = Math.round(-this.contentOffset.x * this.width / this.contentW) - offset;
-        this.ctx.save();
-        this.ctx.fillStyle = '#888888';
-        this.ctx.fillRect(left, top, width, height);
-        this.ctx.restore();
-    }
-});
+};
 
 mixin(SXRender, GraphInterface, false);
 
