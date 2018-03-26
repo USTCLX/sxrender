@@ -5,19 +5,17 @@
 import EventDispatcher from './EventDispatcher'
 import Painter from '../painter/painter';
 import Storage from '../storage/storage';
-import {BaseType, checkType, eventUtil, extend, getNow, rubberBanding} from "../utils/utils";
-
+import {BaseType, checkType, eventUtil, extend, getNow, rubberBanding, Ease} from "../utils/utils";
 
 const DEFAULT_OPTIONS = {
     width: 500,
     height: 500,
     contentWidth: 500,
     contentHeight: 500,
-    scrollX: false,
-    scrollY: true,
     backgroundColor: '',
     backgroundImage: '',
     scrollBar: false,
+    scrollBarFade: false,
     disableTouch: true,
     disableMouse: false,
     preventDefault: true,
@@ -25,6 +23,32 @@ const DEFAULT_OPTIONS = {
     momentumLimitTime: 300,
     momentumLimitDistance: 15,
     bounce: true,//是否开启弹跳效果
+    bounceTime: 800,//弹跳动画的持续时间，普遍采用800
+    startTime:0
+};
+
+//scroll 的默认参数
+const DEFAULT_PARAMS = {
+    x:0,
+    y:0,
+    distX:0, //鼠标按下后，移动的绝对距离
+    distY:0,
+    pointX:0, //鼠标按下的点，相对于page,并在移动时更新
+    pointY:0,
+    startX:0, //移动的开始位置
+    startY:0,
+    scroll:false,//是否可以滚动，
+    scrollX:false,//是否可以沿X轴滚动
+    scrollY:false,//是否可以沿Y轴滚动
+    scrolling:false,//是否正在scroll中
+    maxScrollX:0,
+    minScrollX:0,
+    maxScrollY:0,
+    minScrollY:0,
+    overflowX:0,//开启bounce时，超出的长度
+    overflowY:0,
+    animateTimer:null,  //动画的引用
+    isAnimating:false  //是否正在动画
 };
 
 class SXRender extends EventDispatcher {
@@ -39,6 +63,7 @@ class SXRender extends EventDispatcher {
         this._handleOptions(opts);
         this._handleElements(id);
         this._handleDomEvents();
+        this._handleCustomEvents();
         this._handleInit();
 
         return this;
@@ -54,17 +79,17 @@ class SXRender extends EventDispatcher {
         }
 
         this.options = extend({}, DEFAULT_OPTIONS, opts);
-        this.options.scrollX = (this.options.contentWidth > this.options.width) ? this.options.scrollX : false;
-        this.options.scrollY = (this.options.contentHeight > this.options.height) ? this.options.scrollY : false;
-
     }
 
     _handleElements(id) {
-        this._wrapperEle = document.getElementById(id);
+        this._rootEle = document.getElementById(id);
+
+        this._wrapperEle = document.createElement("div");
         this._canvasEle = document.createElement("canvas");
         this._bgCanvasEle = document.createElement("canvas");
 
         this._wrapperEle.style.position = "relative";
+        this._wrapperEle.style.margin = "auto";
         this._wrapperEle.style.width = this.options.width + "px";
         this._wrapperEle.style.height = this.options.height + "px";
 
@@ -78,6 +103,8 @@ class SXRender extends EventDispatcher {
 
         this._wrapperEle.appendChild(this._bgCanvasEle);
         this._wrapperEle.appendChild(this._canvasEle);
+
+        this._rootEle.appendChild(this._wrapperEle);
     }
 
     _handleDomEvents() {
@@ -96,26 +123,20 @@ class SXRender extends EventDispatcher {
         }
     }
 
+    _handleCustomEvents(){
+        this.on('scrolling',this.render,this);
+    }
+
     _handleInit() {
-
+        this._params = extend({},DEFAULT_PARAMS);
         this._storage = new Storage();
-        this._painter = new Painter(this._canvasEle, this._bgCanvasEle, this._storage);
+        this._painter = new Painter(this._canvasEle, this._bgCanvasEle, this._storage,this._params);
 
-        //以下属性，理论上皆为私有
-        this.x = 0;
-        this.y = 0;
-        this.distX = 0;
-        this.distY = 0;
-        this.pointX = 0;
-        this.pointY = 0;
-        this.startX = 0;
-        this.startY = 0;
-        this.scroll = this.options.scrollX || this.options.scrollY; //是否可以scroll
-        this.scrolling = false;//是否正在scroll中
-        this.maxScrollX = 0;
-        this.minScrollX = this.options.width - this.options.contentWidth;
-        this.maxScrollY = 0;
-        this.minScrollY = this.options.height - this.options.contentHeight;
+        this._params.scrollX = (this.options.contentWidth > this.options.width) ? true: false;
+        this._params.scrollY = (this.options.contentHeight > this.options.height) ? true : false;
+        this._params.scroll = this._params.scrollX||this._params.scrollY;
+        this._params.minScrollX = this.options.width-this.options.contentWidth;
+        this._params.maxScrollX = this.options.height-this.options.contentHeight;
 
         let bgColor = this.options.backgroundColor;
         let bgImage = this.options.backgroundImage;
@@ -129,20 +150,18 @@ class SXRender extends EventDispatcher {
         }
     }
 
-
     handleEvent(e) {
         //事件包装
-        eventUtil(e, this);
-
+        eventUtil(e, this._params);
         //事件分发
         switch (e.type) {
             case "touchstart":
             case "mousedown":
-                this.scroll ? this._startScroll(e) : null;
+                this._startScroll(e);
                 break;
             case "touchmove":
             case "mousemove":
-                this.scroll ? this._moveScroll(e) : null;
+                this._moveScroll(e);
                 break;
             case "mouseup":
             case "mousecancel":
@@ -155,76 +174,122 @@ class SXRender extends EventDispatcher {
     }
 
     _startScroll(e) {
-        if (this.options.preventDefault) {
+        //不能scroll直接返回
+        let params = this._params;
+        let options = this.options;
+
+        if (!params.scroll) {
+            return;
+        }
+
+        if (options.preventDefault) {
             e.preventDefault();
         }
 
-        if (this.options.stopPropagation) {
+        if (options.stopPropagation) {
             e.stopPropagation();
         }
 
-        this.scrolling = true;
+        params.scrolling = true;
 
-        this.pointX = e.pageX;
-        this.pointY = e.pageY;
+        params.pointX = e.pageX;
+        params.pointY = e.pageY;
 
-        this.distX = 0;
-        this.distY = 0;
+        params.distX = 0;
+        params.distY = 0;
 
-        this.startTime = getNow();
+        params.startTime = getNow();
 
         this.trigger('beforeScrollStart');
     }
 
     _moveScroll(e) {
-        if (this.options.preventDefault) {
-            e.preventDefault();
-        }
+        //不能scroll或者不处于scrolling，直接返回
+        let params = this._params;
+        let options = this.options;
+        let newX, newY;
 
-        if (this.options.stopPropagation) {
-            e.stopPropagation();
-        }
-
-        if (!this.scrolling) {
+        if (!params.scroll || !params.scrolling) {
             return;
         }
 
-        let newX, newY;
+        if (options.preventDefault) {
+            e.preventDefault();
+        }
 
-        newX = this.x + e.movementX;
-        newY = this.y + e.movementY;
+        if (options.stopPropagation) {
+            e.stopPropagation();
+        }
 
-        if (newX < this.minScrollX || newX > this.maxScrollX) {
-            if (this.options.bounce) {
-                newX = rubberBanding(newX, this.options.width);
+        params.distX += e.movementX;
+        params.distY += e.movementY;
+        params.pointX = e.pageX;
+        params.pointY = e.pageY;
+
+        newX = params.x + e.movementX;
+        newY = params.y + e.movementY;
+
+        if (!options.scrollX) {
+            newX = 0;
+        }
+        if (!options.scrollY) {
+            newY = 0;
+        }
+
+
+        //到达边缘，减速或停止移动
+        if (newX < params.minScrollX || newX > params.maxScrollX) {
+            params.overflowX += e.movementX;
+            if (options.bounce) {
+                newX = (newX < params.minScrollX ? params.minScrollX : params.maxScrollX) + rubberBanding(params.overflowX, options.width);
             } else {
-                newX = (newX < this.minScrollX) ? this.minScrollX : this.maxScrollX;
+                newX = (newX < params.minScrollX) ? params.minScrollX : params.maxScrollX;
             }
         }
 
-        // console.log('new y', newY, e.movementY);
-
-        if (newY < this.minScrollY || newY > this.maxScrollY) {
-            if (this.options.bounce) {
-                console.log('old y ', newY);
-                newY = rubberBanding(500, this.options.height);
-                console.log('new y', newY);
+        if (newY < params.minScrollY || newY > params.maxScrollY) {
+            params.overflowY += e.movementY;
+            if (options.bounce) {
+                newY = (newY < params.minScrollY ? params.minScrollY : params.maxScrollY) + rubberBanding(params.overflowY, options.height);
             } else {
-                newY = (newY < this.minScrollY) ? this.minScrollY : this.maxScrollY;
+                newY = (newY < params.minScrollY) ? params.minScrollY : params.maxScrollY;
             }
         }
 
-        this.x = newX;
-        this.y = newY;
+        params.x = newX;
+        params.y = newY;
 
+        this.trigger('scrolling');
     }
 
     _endScroll(e) {
-        this.scrolling = false;
+        //不能滚动，直接返回
+        let params = this._params;
+        if (!params.scroll) {
+            return;
+        }
+
+        params.scrolling = false;
+    }
+
+    _resetPosition(time = 0, easing = Ease.bounce) {
+
+    }
+
+    _scrollTo(x, y, time = 0, easing = Ease.bounce) {
+
+    }
+
+    _animate(destX, destY, duration, easingFn) {
+
     }
 
     _stop() {
 
+    }
+
+    render(){
+        this._painter.renderAll();
     }
 }
 

@@ -87,3 +87,8 @@ gulp.task('default',['script'],function(){
     gulp.watch('./src/*.js',['script']);
     gulp.watch('./src/*/*.js',['script']);
 });
+
+gulp.task('watch:newver',['newver'],function(){
+    console.log('watching newver');
+    gulp.watch('./src/core/*.js',['newver']);
+});

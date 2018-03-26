@@ -4,36 +4,51 @@
 
 import {GraphType} from '../utils/utils';
 
+const SCROLLBAR_WIDTH = 5;
+const SCROLLBAR_COLOR = "#eee";
+
 class Painter {
-    constructor(canvas, backCanvas, storage) {
+    constructor(canvas, backCanvas, storage, params) {
         this.canvas = canvas;
         this.backCanvas = backCanvas;
         this.storage = storage;
         this.objects = this.storage.objects;
+        this.params = params;
 
         this.ctx = canvas.getContext('2d');
         this.bgCtx = backCanvas.getContext('2d');
     }
 
     renderAll() {
-        var objs = this.objects;
+        let objs = this.objects;
+        let params = this.params;
+        let ctx = this.ctx;
+
         //clear zone
-        clearCtx(this.ctx, {w: this.canvas.width, h: this.canvas.height});
+        clearCtx(ctx, {w: this.canvas.width, h: this.canvas.height});
         for (var i = 0, il = objs.length; i < il; i++) {
             switch (objs[i].type) {
                 case GraphType.Rect:
-                    drawRect(this.ctx, objs[i]);
+                    drawRect(ctx, objs[i]);
                     break;
                 case GraphType.Circle:
-                    drawCircle(this.ctx, objs[i]);
+                    drawCircle(ctx, objs[i]);
                     break;
                 case GraphType.Image:
-                    drawImage(this.ctx, objs[i]);
+                    drawImage(ctx, objs[i]);
                     break;
                 default:
                     console.error('not match type in render all');
                     break;
             }
+        }
+
+        if(params.scroll&&params.scrollX){
+            drawScrollBar(ctx,params,false)
+        }
+
+        if(params.scroll&&params.scrollY){
+            drawScrollBar(ctx,params,true)
         }
     }
 
@@ -102,6 +117,15 @@ function drawImage(ctx, obj) {
         ctx.drawImage(imgObj, x, y);
     }
     ctx.restore();
+}
+
+function drawScrollBar(ctx,opts,vertical){
+    let height,width,x,y,color;
+    if(vertical){
+
+    }else{
+
+    }
 }
 
 export default Painter;

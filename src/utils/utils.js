@@ -183,8 +183,37 @@ const extend = function (target, ...rest) {
  * 获取准确的当前时间
  * @returns {number}
  */
-const getNow = function(){
+const getNow = function () {
     return window.performance && window.performance.now ? (window.performance.now() + window.performance.timing.navigationStart) : +new Date()
+};
+
+
+/**
+ * s
+ * @type {{swipe: {style: string}}}
+ */
+const Ease = {
+    //easeOutQuint
+    swipe: {
+        style: 'cubic-bezier(0.23, 1, 0.32, 1)',
+        fn: function (t) {
+            return 1 + (--t * t * t * t * t);
+        }
+    },
+    //easeOutQuard
+    swipeBounce: {
+        style: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+        fn: function (t) {
+            return t * (2 - t);
+        }
+    },
+    //easeOutQuart
+    bounce: {
+        style: 'cubic-bezier(0.165, 0.84, 0.44, 1)',
+        fn: function (t) {
+            return 1 - (--t * t * t * t);
+        }
+    }
 };
 
 const BaseType = {
@@ -214,6 +243,7 @@ export {
     mixin,
     extend,
     getNow,
+    Ease,
     BaseType,
     GraphType
 };

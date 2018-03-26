@@ -474,6 +474,7 @@ function mouseMoveHandler(e){
                         this.contentOffset.y = this.limitY.min;
                         //到达下边缘
                         this.springOffset.y = Utils.rubberBanding(diff.y,this.height);
+                        console.log('diff.y',diff.y,'springOffset.y',this.springOffset.y);
                     }else{
                         this.mouseDownPos.y = pos.y;
                         this.contentOffset.y += diff.y;
@@ -484,6 +485,7 @@ function mouseMoveHandler(e){
                         //到达上边缘
                         this.contentOffset.y = this.limitY.max;
                         this.springOffset.y = Utils.rubberBanding(diff.y,this.height);
+                        console.log('diff.y',diff.y,'springOffset.y',this.springOffset.y);
                     }else{
                         this.mouseDownPos.y = pos.y;
                         this.contentOffset.y += diff.y;

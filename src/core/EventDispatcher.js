@@ -58,7 +58,7 @@ EventDispatcher.prototype.trigger = function (event) {
         throw new Error("Event object missing 'type' property");
     }
     if (checkType(this._handlers[event.type]) === BaseType.Array) {
-        var _h = this._handlers;
+        var _h = this._handlers[event.type];
 
         for (var i = 0, il = _h.length; i < il; i++) {
             _h[i]['h'].call(_h[i]['ctx'], event)
