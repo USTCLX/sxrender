@@ -8,7 +8,7 @@
  * @param  {[type]} e [description]
  */
 const getRelativeRect = function (ele) {
-    var DomRect;
+    let DomRect;
 
     DomRect = ele.target.getBoundingClientRect();
 
@@ -42,9 +42,9 @@ const eventUtil = function (ev, pre) {
  * @param  {[type]} clickPos [description]
  */
 const checkClickElm = function (objs, clickPos, contentOffset) {
-    var obj = null;
-    var pos = clickPos;
-    for (var i = 0, il = objs.length; i < il; i++) {
+    let obj = null;
+    let pos = clickPos;
+    for (let i = 0, il = objs.length; i < il; i++) {
         obj = objs[i];
         if (obj.draggable !== true) {
             continue;
@@ -81,9 +81,9 @@ const checkClickElm = function (objs, clickPos, contentOffset) {
 const rubberBanding = function (x, d) {
     const c = 0.55;
     if (x > 0) {
-        return Math.round((1 - (1 / ((x * c / d) + 1))) * d);
+        return (1 - (1 / ((x * c / d) + 1))) * d;
     } else {
-        return -Math.round((1 - (1 / ((-x * c / d) + 1))) * d)
+        return (1 - (1 / ((-x * c / d) + 1))) * d;
     }
 };
 
@@ -94,7 +94,7 @@ const rubberBanding = function (x, d) {
  */
 const genGUID = function () {
     return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxx".replace(/[xy]/g, function (c) {
-        var r = Math.random() * 16 | 0, v = (c === 'x') ? r : (r & 0x3 | 0x8);
+        let r = Math.random() * 16 | 0, v = (c === 'x') ? r : (r & 0x3 | 0x8);
         return v.toString(16);
     }).toUpperCase();
 };
@@ -103,7 +103,7 @@ const genGUID = function () {
  * 深拷贝
  */
 const deepClone = function (values) {
-    var copy;
+    let copy;
     if (null === values || "object" !== typeof values) {
         return values
     }
@@ -116,7 +116,7 @@ const deepClone = function (values) {
 
     if (values instanceof Array) {
         copy = [];
-        for (var i = 0, len = values.length; i < len; i++) {
+        for (let i = 0, len = values.length; i < len; i++) {
             copy[i] = deepClone(values[i]);
         }
         return copy;
@@ -124,7 +124,7 @@ const deepClone = function (values) {
 
     if (values instanceof Object) {
         copy = {};
-        for (var key in values) {
+        for (let key in values) {
             if (values.hasOwnProperty(key)) {
                 copy[key] = deepClone(values[key]);
             }
@@ -137,7 +137,7 @@ const deepClone = function (values) {
  * 返回对象类型，小写字符串
  */
 const checkType = function (obj) {
-    var str = Object.prototype.toString.call(obj);
+    let str = Object.prototype.toString.call(obj);
     return str.slice(8, str.length - 1).toLowerCase();
 };
 
@@ -152,7 +152,7 @@ const mixin = function (target, source, overlay) {
     target = 'prototype' in target ? target.prototype : target;
     source = 'prototype' in source ? source.prototype : source;
 
-    for (var key in source) {
+    for (let key in source) {
         if (source.hasOwnProperty(key) && (overlay ? source[key] != null : target[key] == null)) {
             target[key] = source[key];
         }
@@ -170,7 +170,7 @@ const mixin = function (target, source, overlay) {
 const extend = function (target, ...rest) {
     for (let i = 0; i < rest.length; i++) {
         let source = rest[i];
-        for (var key in source) {
+        for (let key in source) {
             if (source.hasOwnProperty(key)) {
                 target[key] = source[key];
             }

@@ -94,17 +94,14 @@ var possibleConstructorReturn = function (self, call) {
  * 获取元素内相对坐标
  * @param  {[type]} e [description]
  */
-var getRelativeRect = function getRelativeRect(e) {
-    var x, y, DomRect;
+var getRelativeRect = function getRelativeRect(ele) {
+    var DomRect = void 0;
 
-    x = e.clientX;
-    y = e.clientY;
-
-    DomRect = e.target.getBoundingClientRect();
+    DomRect = ele.target.getBoundingClientRect();
 
     return {
-        x: Math.round(x - DomRect.x),
-        y: Math.round(y - DomRect.y)
+        x: Math.round(ele.clientX - DomRect.x),
+        y: Math.round(ele.clientY - DomRect.y)
     };
 };
 
@@ -153,9 +150,9 @@ var checkClickElm = function checkClickElm(objs, clickPos, contentOffset) {
 var rubberBanding = function rubberBanding(x, d) {
     var c = 0.55;
     if (x > 0) {
-        return Math.round((1 - 1 / (x * c / d + 1)) * d);
+        return (1 - 1 / (x * c / d + 1)) * d;
     } else {
-        return -Math.round((1 - 1 / (-x * c / d + 1)) * d);
+        return (1 - 1 / (-x * c / d + 1)) * d;
     }
 };
 
@@ -175,7 +172,7 @@ var genGUID = function genGUID() {
  * 深拷贝
  */
 var deepClone = function deepClone(values) {
-    var copy;
+    var copy = void 0;
     if (null === values || "object" !== (typeof values === "undefined" ? "undefined" : _typeof(values))) {
         return values;
     }
@@ -836,34 +833,34 @@ EventDispatcher.prototype.off = function (event, handler) {
  */
 
 var Graph = function (_EventDispatcher) {
-    inherits(Graph, _EventDispatcher);
+        inherits(Graph, _EventDispatcher);
 
-    function Graph(opts) {
-        classCallCheck(this, Graph);
+        function Graph(opts) {
+                classCallCheck(this, Graph);
 
-        var _this = possibleConstructorReturn(this, (Graph.__proto__ || Object.getPrototypeOf(Graph)).call(this));
+                var _this = possibleConstructorReturn(this, (Graph.__proto__ || Object.getPrototypeOf(Graph)).call(this));
 
-        opts = opts || {};
+                opts = opts || {};
 
-        //shape
-        _this.x = opts.x || 0;
-        _this.y = opts.y || 0;
-        _this.width = opts.width || 0;
-        _this.height = opts.height || 0;
+                //shape
+                _this.x = opts.x || 0;
+                _this.y = opts.y || 0;
+                _this.width = opts.width || 0;
+                _this.height = opts.height || 0;
 
-        //style
-        _this.fill = opts.fill || '';
-        _this.stroke = opts.stroke || '';
-        _this.lineWidth = opts.lineWidth || 1;
+                //style
+                _this.fill = opts.fill || '';
+                _this.stroke = opts.stroke || '';
+                _this.lineWidth = opts.lineWidth || 1;
 
-        //others
-        _this.id = opts.id || genGUID();
-        _this.draggable = opts.draggable || false;
+                //others
+                _this.id = opts.id || genGUID();
+                _this.draggable = opts.draggable || false;
 
-        return _this;
-    }
+                return _this;
+        }
 
-    return Graph;
+        return Graph;
 }(EventDispatcher);
 
 //old fashion
@@ -937,13 +934,13 @@ var Circle = function (_Graph) {
 
 var GraphInterface = {
 
-  Rect: function Rect$$1(opts) {
-    return new Rect(opts);
-  },
+    Rect: function Rect$$1(opts) {
+        return new Rect(opts);
+    },
 
-  Circle: function Circle$$1(opts) {
-    return new Circle(opts);
-  }
+    Circle: function Circle$$1(opts) {
+        return new Circle(opts);
+    }
 };
 
 /**
@@ -1452,6 +1449,7 @@ function mouseMoveHandler(e) {
                         this.contentOffset.y = this.limitY.min;
                         //到达下边缘
                         this.springOffset.y = rubberBanding(diff.y, this.height);
+                        console.log('diff.y', diff.y, 'springOffset.y', this.springOffset.y);
                     } else {
                         this.mouseDownPos.y = pos.y;
                         this.contentOffset.y += diff.y;

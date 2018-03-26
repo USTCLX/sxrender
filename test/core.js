@@ -79,7 +79,7 @@ var possibleConstructorReturn = function (self, call) {
  * @param  {[type]} e [description]
  */
 var getRelativeRect = function getRelativeRect(ele) {
-    var DomRect;
+    var DomRect = void 0;
 
     DomRect = ele.target.getBoundingClientRect();
 
@@ -104,6 +104,22 @@ var eventUtil = function eventUtil(ev, pre) {
     if (ev.movementX === undefined || ev.movementY == undefined) {
         ev.movementX = pre.pointX === 0 ? 0 : ev.pageX - pre.pointX;
         ev.movementY = pre.pointY === 0 ? 0 : ev.pageY - pre.pointY;
+    }
+};
+
+/**
+ * 橡皮擦公式
+ * @param  {num} x 鼠标移动的距离
+ * @param  {num} c 阻尼常量
+ * @param  {num} d 容器尺寸
+ * @return {num}   实际移动距离
+ */
+var rubberBanding = function rubberBanding(x, d) {
+    var c = 0.55;
+    if (x > 0) {
+        return (1 - 1 / (x * c / d + 1)) * d;
+    } else {
+        return (1 - 1 / (-x * c / d + 1)) * d;
     }
 };
 
@@ -135,6 +151,14 @@ var extend = function extend(target) {
         }
     }
     return target;
+};
+
+/**
+ * 获取准确的当前时间
+ * @returns {number}
+ */
+var getNow = function getNow() {
+    return window.performance && window.performance.now ? window.performance.now() + window.performance.timing.navigationStart : +new Date();
 };
 
 var BaseType = {
@@ -434,7 +458,8 @@ var DEFAULT_OPTIONS = {
     preventDefault: true,
     stopPropagation: true,
     momentumLimitTime: 300,
-    momentumLimitDistance: 15
+    momentumLimitDistance: 15,
+    bounce: true //是否开启弹跳效果
 };
 
 var SXRender = function (_EventDispatcher) {
@@ -463,6 +488,14 @@ var SXRender = function (_EventDispatcher) {
     createClass(SXRender, [{
         key: '_handleOptions',
         value: function _handleOptions(opts) {
+            if (opts.contentWidth === undefined || opts.contentWidth < opts.width) {
+                opts.contentWidth = opts.width;
+            }
+
+            if (opts.contentHeight === undefined || opts.contentHeight < opts.height) {
+                opts.contentHeight = opts.height;
+            }
+
             this.options = extend({}, DEFAULT_OPTIONS, opts);
             this.options.scrollX = this.options.contentWidth > this.options.width ? this.options.scrollX : false;
             this.options.scrollY = this.options.contentHeight > this.options.height ? this.options.scrollY : false;
@@ -513,12 +546,21 @@ var SXRender = function (_EventDispatcher) {
             this._storage = new Storage();
             this._painter = new Painter(this._canvasEle, this._bgCanvasEle, this._storage);
 
+            //以下属性，理论上皆为私有
             this.x = 0;
             this.y = 0;
+            this.distX = 0;
+            this.distY = 0;
             this.pointX = 0;
             this.pointY = 0;
             this.startX = 0;
             this.startY = 0;
+            this.scroll = this.options.scrollX || this.options.scrollY; //是否可以scroll
+            this.scrolling = false; //是否正在scroll中
+            this.maxScrollX = 0;
+            this.minScrollX = this.options.width - this.options.contentWidth;
+            this.maxScrollY = 0;
+            this.minScrollY = this.options.height - this.options.contentHeight;
 
             var bgColor = this.options.backgroundColor;
             var bgImage = this.options.backgroundImage;
@@ -541,33 +583,96 @@ var SXRender = function (_EventDispatcher) {
             switch (e.type) {
                 case "touchstart":
                 case "mousedown":
-                    this._startScroll(e);
+                    this.scroll ? this._startScroll(e) : null;
                     break;
                 case "touchmove":
                 case "mousemove":
-                    this._moveScroll(e);
+                    this.scroll ? this._moveScroll(e) : null;
                     break;
                 case "mouseup":
                 case "mousecancel":
                 case "mouseout":
                 case "touchend":
                 case "touchcancel":
-                    this._endScroll(e);
+                    this.scroll ? this._endScroll(e) : null;
                     break;
             }
         }
     }, {
         key: '_startScroll',
         value: function _startScroll(e) {
+            if (this.options.preventDefault) {
+                e.preventDefault();
+            }
+
+            if (this.options.stopPropagation) {
+                e.stopPropagation();
+            }
+
+            this.scrolling = true;
+
             this.pointX = e.pageX;
             this.pointY = e.pageY;
+
+            this.distX = 0;
+            this.distY = 0;
+
+            this.startTime = getNow();
+
+            this.trigger('beforeScrollStart');
         }
     }, {
         key: '_moveScroll',
-        value: function _moveScroll(e) {}
+        value: function _moveScroll(e) {
+            if (this.options.preventDefault) {
+                e.preventDefault();
+            }
+
+            if (this.options.stopPropagation) {
+                e.stopPropagation();
+            }
+
+            if (!this.scrolling) {
+                return;
+            }
+
+            var newX = void 0,
+                newY = void 0;
+
+            newX = this.x + e.movementX;
+            newY = this.y + e.movementY;
+
+            if (newX < this.minScrollX || newX > this.maxScrollX) {
+                if (this.options.bounce) {
+                    newX = rubberBanding(newX, this.options.width);
+                } else {
+                    newX = newX < this.minScrollX ? this.minScrollX : this.maxScrollX;
+                }
+            }
+
+            // console.log('new y', newY, e.movementY);
+
+            if (newY < this.minScrollY || newY > this.maxScrollY) {
+                if (this.options.bounce) {
+                    console.log('old y ', newY);
+                    newY = rubberBanding(500, this.options.height);
+                    console.log('new y', newY);
+                } else {
+                    newY = newY < this.minScrollY ? this.minScrollY : this.maxScrollY;
+                }
+            }
+
+            this.x = newX;
+            this.y = newY;
+        }
     }, {
         key: '_endScroll',
-        value: function _endScroll(e) {}
+        value: function _endScroll(e) {
+            this.scrolling = false;
+        }
+    }, {
+        key: '_stop',
+        value: function _stop() {}
     }]);
     return SXRender;
 }(EventDispatcher);

@@ -5,7 +5,7 @@
 import EventDispatcher from './EventDispatcher'
 import Painter from '../painter/painter';
 import Storage from '../storage/storage';
-import {BaseType, checkType, eventUtil, extend, getNow} from "../utils/utils";
+import {BaseType, checkType, eventUtil, extend, getNow, rubberBanding} from "../utils/utils";
 
 
 const DEFAULT_OPTIONS = {
@@ -23,7 +23,8 @@ const DEFAULT_OPTIONS = {
     preventDefault: true,
     stopPropagation: true,
     momentumLimitTime: 300,
-    momentumLimitDistance: 15
+    momentumLimitDistance: 15,
+    bounce: true,//是否开启弹跳效果
 };
 
 class SXRender extends EventDispatcher {
@@ -44,6 +45,14 @@ class SXRender extends EventDispatcher {
     }
 
     _handleOptions(opts) {
+        if (opts.contentWidth === undefined || opts.contentWidth < opts.width) {
+            opts.contentWidth = opts.width;
+        }
+
+        if (opts.contentHeight === undefined || opts.contentHeight < opts.height) {
+            opts.contentHeight = opts.height;
+        }
+
         this.options = extend({}, DEFAULT_OPTIONS, opts);
         this.options.scrollX = (this.options.contentWidth > this.options.width) ? this.options.scrollX : false;
         this.options.scrollY = (this.options.contentHeight > this.options.height) ? this.options.scrollY : false;
@@ -92,6 +101,7 @@ class SXRender extends EventDispatcher {
         this._storage = new Storage();
         this._painter = new Painter(this._canvasEle, this._bgCanvasEle, this._storage);
 
+        //以下属性，理论上皆为私有
         this.x = 0;
         this.y = 0;
         this.distX = 0;
@@ -100,7 +110,12 @@ class SXRender extends EventDispatcher {
         this.pointY = 0;
         this.startX = 0;
         this.startY = 0;
-        this.scroll = this.options.scrollX||this.options.scrollY;
+        this.scroll = this.options.scrollX || this.options.scrollY; //是否可以scroll
+        this.scrolling = false;//是否正在scroll中
+        this.maxScrollX = 0;
+        this.minScrollX = this.options.width - this.options.contentWidth;
+        this.maxScrollY = 0;
+        this.minScrollY = this.options.height - this.options.contentHeight;
 
         let bgColor = this.options.backgroundColor;
         let bgImage = this.options.backgroundImage;
@@ -123,23 +138,33 @@ class SXRender extends EventDispatcher {
         switch (e.type) {
             case "touchstart":
             case "mousedown":
-                this._startScroll(e);
+                this.scroll ? this._startScroll(e) : null;
                 break;
             case "touchmove":
             case "mousemove":
-                this._moveScroll(e);
+                this.scroll ? this._moveScroll(e) : null;
                 break;
             case "mouseup":
             case "mousecancel":
             case "mouseout":
             case "touchend":
             case "touchcancel":
-                this._endScroll(e);
+                this.scroll ? this._endScroll(e) : null;
                 break;
         }
     }
 
     _startScroll(e) {
+        if (this.options.preventDefault) {
+            e.preventDefault();
+        }
+
+        if (this.options.stopPropagation) {
+            e.stopPropagation();
+        }
+
+        this.scrolling = true;
+
         this.pointX = e.pageX;
         this.pointY = e.pageY;
 
@@ -152,11 +177,50 @@ class SXRender extends EventDispatcher {
     }
 
     _moveScroll(e) {
+        if (this.options.preventDefault) {
+            e.preventDefault();
+        }
+
+        if (this.options.stopPropagation) {
+            e.stopPropagation();
+        }
+
+        if (!this.scrolling) {
+            return;
+        }
+
+        let newX, newY;
+
+        newX = this.x + e.movementX;
+        newY = this.y + e.movementY;
+
+        if (newX < this.minScrollX || newX > this.maxScrollX) {
+            if (this.options.bounce) {
+                newX = rubberBanding(newX, this.options.width);
+            } else {
+                newX = (newX < this.minScrollX) ? this.minScrollX : this.maxScrollX;
+            }
+        }
+
+        // console.log('new y', newY, e.movementY);
+
+        if (newY < this.minScrollY || newY > this.maxScrollY) {
+            if (this.options.bounce) {
+                console.log('old y ', newY);
+                newY = rubberBanding(500, this.options.height);
+                console.log('new y', newY);
+            } else {
+                newY = (newY < this.minScrollY) ? this.minScrollY : this.maxScrollY;
+            }
+        }
+
+        this.x = newX;
+        this.y = newY;
 
     }
 
     _endScroll(e) {
-
+        this.scrolling = false;
     }
 
     _stop() {

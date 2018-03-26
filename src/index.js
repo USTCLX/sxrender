@@ -9,41 +9,6 @@ import Storage from './storage/storage';
 import Painter from './painter/painter';
 
 
-/**
- * SXRender类
- * @param {String} id
- * @param {Number} width
- * @param {Number} height
- * @param {Number} contentWidth
- * @param {Number} contentHeight
- * @param {String} backgroundColor
- * @param {String/Object} backgroundImage
- * @param {Boolean} drawScrollBar
- */
-class SXRender2 {
-    constructor(opts) {
-        //basic attrs
-        this.id = opts.id||'';
-        this.width = opts.width||0;
-        this.height = opts.height||0;
-        this.contentWidth = opts.contentWidth||this.width;
-        this.contentHeight = opts.contentHeight||this.height;
-        this.backgroundColor = opts.backgroundColor||'';
-        this.backgroundImage = opts.backgroundImage||'';
-        this.drawScrollBar = opts.drawScrollBar||false;
-
-        //private attrs
-        this._canvas = null;
-        this._ctx = null;
-        this._backgroundCanvas = null;
-        this._backgroundCtx = null;
-        
-        this._scrollVEnabled = false;
-        this._scrollHEnabled = false;
-    }
-
-}
-
 let SXRender = function (opts) {
     var canvas, ctx, id, w, h, bgColor, contentW, contentH, drawScrollBar;
     opts = opts || {};
@@ -393,6 +358,7 @@ function mouseMoveHandler(e) {
                         this.contentOffset.y = this.limitY.min;
                         //到达下边缘
                         this.springOffset.y = Utils.rubberBanding(diff.y, this.height);
+                        console.log('diff.y',diff.y,'springOffset.y',this.springOffset.y);
                     } else {
                         this.mouseDownPos.y = pos.y;
                         this.contentOffset.y += diff.y;
