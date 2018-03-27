@@ -4,6 +4,22 @@
 	(global.SXRender = factory());
 }(this, (function () { 'use strict';
 
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) {
+  return typeof obj;
+} : function (obj) {
+  return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
+};
+
+
+
+
+
+
+
+
+
+
+
 var classCallCheck = function (instance, Constructor) {
   if (!(instance instanceof Constructor)) {
     throw new TypeError("Cannot call a class as a function");
@@ -124,11 +140,63 @@ var rubberBanding = function rubberBanding(x, d) {
 };
 
 /**
+ * 深拷贝
+ */
+var deepClone = function deepClone(values) {
+    var copy = void 0;
+    if (null === values || "object" !== (typeof values === "undefined" ? "undefined" : _typeof(values))) {
+        return values;
+    }
+
+    if (values instanceof Date) {
+        copy = new Date();
+        copy.setTime(values.getTime());
+        return copy;
+    }
+
+    if (values instanceof Array) {
+        copy = [];
+        for (var i = 0, len = values.length; i < len; i++) {
+            copy[i] = deepClone(values[i]);
+        }
+        return copy;
+    }
+
+    if (values instanceof Object) {
+        copy = {};
+        for (var key in values) {
+            if (values.hasOwnProperty(key)) {
+                copy[key] = deepClone(values[key]);
+            }
+        }
+        return copy;
+    }
+};
+
+/**
  * 返回对象类型，小写字符串
  */
 var checkType = function checkType(obj) {
     var str = Object.prototype.toString.call(obj);
     return str.slice(8, str.length - 1).toLowerCase();
+};
+
+/**
+ * 修饰器/合成器
+ * @param {Object/Function} target
+ * @param {Object/Function} source
+ * @param {boolean} overlay 是否覆盖
+ */
+var mixin = function mixin(target, source, overlay) {
+    target = 'prototype' in target ? target.prototype : target;
+    source = 'prototype' in source ? source.prototype : source;
+
+    for (var key in source) {
+        if (source.hasOwnProperty(key) && (overlay ? source[key] != null : target[key] == null)) {
+            target[key] = source[key];
+        }
+    }
+    return target;
 };
 
 /**
@@ -159,6 +227,34 @@ var extend = function extend(target) {
  */
 var getNow = function getNow() {
     return window.performance && window.performance.now ? window.performance.now() + window.performance.timing.navigationStart : +new Date();
+};
+
+/**
+ * s
+ * @type {{swipe: {style: string}}}
+ */
+var Ease = {
+    //easeOutQuint
+    swipe: {
+        style: 'cubic-bezier(0.23, 1, 0.32, 1)',
+        fn: function fn(t) {
+            return 1 + --t * t * t * t * t;
+        }
+    },
+    //easeOutQuard
+    swipeBounce: {
+        style: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+        fn: function fn(t) {
+            return t * (2 - t);
+        }
+    },
+    //easeOutQuart
+    bounce: {
+        style: 'cubic-bezier(0.165, 0.84, 0.44, 1)',
+        fn: function fn(t) {
+            return 1 - --t * t * t * t;
+        }
+    }
 };
 
 var BaseType = {
@@ -285,11 +381,486 @@ EventDispatcher.prototype.off = function (event, handler) {
 };
 
 /**
+ * Created by lixiang on 2018/1/8.
+ */
+
+// export default (
+//     typeof window !== 'undefined'
+//     && (
+//         (window.requestAnimationFrame && window.requestAnimationFrame.bind(window))
+//         // https://github.com/ecomfe/zrender/issues/189#issuecomment-224919809
+//         || (window.msRequestAnimationFrame && window.msRequestAnimationFrame.bind(window))
+//         || window.mozRequestAnimationFrame
+//         || window.webkitRequestAnimationFrame
+//     )
+// ) || function (func,interval) {
+//     setTimeout(func, interval);
+// };
+
+
+function requestAnimationFrame (func, interval) {
+  setTimeout(func, interval);
+}
+
+/**
+ * 时间曲线
+ * @type {{linear: timingFunctions.linear, easeInQuad: timingFunctions.easeInQuad, easeOutQuad: timingFunctions.easeOutQuad, easeInOutQuad: timingFunctions.easeInOutQuad, easeInCubic: timingFunctions.easeInCubic, easeOutCubic: timingFunctions.easeOutCubic, easeInOutCubic: timingFunctions.easeInOutCubic, easeInQuart: timingFunctions.easeInQuart, easeOutQuart: timingFunctions.easeOutQuart, easeInOutQuart: timingFunctions.easeInOutQuart, easeInQuint: timingFunctions.easeInQuint, easeOutQuint: timingFunctions.easeOutQuint, easeInOutQuint: timingFunctions.easeInOutQuint, spring: timingFunctions.spring}}
+ */
+var timingFunctions = {
+    // no easing, no acceleration
+    linear: function linear(t) {
+        return t;
+    },
+    // accelerating from zero velocity
+    easeInQuad: function easeInQuad(t) {
+        return t * t;
+    },
+    // decelerating to zero velocity
+    easeOutQuad: function easeOutQuad(t) {
+        return t * (2 - t);
+    },
+    // acceleration until halfway, then deceleration
+    easeInOutQuad: function easeInOutQuad(t) {
+        return t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+    },
+    // accelerating from zero velocity
+    easeInCubic: function easeInCubic(t) {
+        return t * t * t;
+    },
+    // decelerating to zero velocity
+    easeOutCubic: function easeOutCubic(t) {
+        return --t * t * t + 1;
+    },
+    // acceleration until halfway, then deceleration
+    easeInOutCubic: function easeInOutCubic(t) {
+        return t < .5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
+    },
+    // accelerating from zero velocity
+    easeInQuart: function easeInQuart(t) {
+        return t * t * t * t;
+    },
+    // decelerating to zero velocity
+    easeOutQuart: function easeOutQuart(t) {
+        return 1 - --t * t * t * t;
+    },
+    // acceleration until halfway, then deceleration
+    easeInOutQuart: function easeInOutQuart(t) {
+        return t < .5 ? 8 * t * t * t * t : 1 - 8 * --t * t * t * t;
+    },
+    // accelerating from zero velocity
+    easeInQuint: function easeInQuint(t) {
+        return t * t * t * t * t;
+    },
+    // decelerating to zero velocity
+    easeOutQuint: function easeOutQuint(t) {
+        return 1 + --t * t * t * t * t;
+    },
+    // acceleration until halfway, then deceleration
+    easeInOutQuint: function easeInOutQuint(t) {
+        return t < .5 ? 16 * t * t * t * t * t : 1 + 16 * --t * t * t * t * t;
+    },
+    //spring
+    spring: function spring(t) {
+        return -0.5 * Math.exp(-6 * t) * (-2 * Math.exp(6 * t) + Math.sin(12 * t) + 2 * Math.cos(12 * t));
+    }
+};
+
+//状态表
+var stateTypes = {
+    idle: 'idle',
+    running: 'running',
+    paused: 'paused'
+};
+
+var valueTypes = {
+    number: 'number',
+    string: 'string',
+    object: 'object'
+};
+
+//状态构造器
+function State(stateType, repeat, curFrame, curValue, reversing) {
+    this.stateType = stateType || stateTypes.idle;
+    this.repeat = repeat || 0;
+    this.curFrame = curFrame || 0;
+    this.curValue = curValue;
+    this.reversing = reversing || false;
+}
+
+//插值
+function interpolateNumber(startValue, stopValue, progress, needReverse) {
+    if (needReverse) {
+        return Math.round(stopValue + progress * (startValue - stopValue));
+    } else {
+        return Math.round(startValue + progress * (stopValue - startValue));
+    }
+}
+
+//对象插值
+function interpolateObject(startObj, stopObj, progress, needReverse) {
+    var obj = Object.assign({}, startObj);
+    for (var key in obj) {
+        if (obj.hasOwnProperty(key)) {
+            if (needReverse) {
+                obj[key] = Math.round(stopObj[key] + progress * (startObj[key] - stopObj[key]));
+            } else {
+                obj[key] = Math.round(startObj[key] + progress * (stopObj[key] - startObj[key]));
+            }
+        }
+    }
+    return obj;
+}
+
+/**
+ * Created by lixiang on 2018/1/8.
+ */
+
+var Animation = function Animation(target, key, startValue, stopValue, duration, opts) {
+    opts = opts || {};
+
+    this.target = target;
+    this.key = key;
+    this.startValue = startValue;
+    this.stopValue = stopValue;
+    this.duration = duration;
+
+    this.fps = opts.fps || 60;
+    this.startDelay = opts.startDelay || 0;
+    this.autoReverse = opts.autoReverse || false;
+    this.repeatCount = opts.repeatCount || 1;
+    this.appliedOnCompletion = opts.appliedOnCompletion || function () {};
+    this.timingFun = opts.timingFun || timingFunctions.linear; //必须是个函数
+
+    this.state = new State();
+    this.lastState = null;
+
+    //event
+    this.didStartCB = opts.didStartCB || function () {};
+    this.onFrameCB = opts.onFrameCB || function () {};
+    this.didPauseCB = opts.didPauseCB || function () {};
+    this.didStopCB = opts.didStopCB || function () {};
+
+    //private
+    this._p = 0; //进度
+    this._totalFrames = 0; //总帧数
+    this._timeStep = 0; //定时器间隔
+    this._timeStamp = 0; //开始动画事件戳
+    this._lastTimeStamp = 0; //动画帧时间戳
+    this._valueType = valueTypes.number;
+
+    this.init();
+};
+
+var coreAnimateHandler = function coreAnimateHandler() {
+    if (this.state.stateType !== stateTypes.running) {
+        return;
+    }
+
+    this._p = this.timingFun(this.state.curFrame / this._totalFrames);
+
+    this.state.curValue = this._valueType !== valueTypes.object ? interpolateNumber(this.startValue, this.stopValue, this._p, this.state.resveringeState) : interpolateObject(this.startValue, this.stopValue, this._p, this.state.resveringeState);
+
+    if (this.target && this.target.hasOwnProperty(this.key)) {
+        this.target[this.key] = this.state.curValue;
+    }
+
+    this.onFrameCB && this.onFrameCB();
+
+    this.lastState = deepClone(this.state);
+    this._lastTimeStamp = Date.now();
+
+    if (this.state.curFrame < this._totalFrames) {
+        //执行动画
+        requestAnimationFrame(coreAnimateHandler.bind(this), this._timeStep);
+    } else if (this.autoReverse && !this.state.resveringeState) {
+        //自动回溯
+        this.state.resveringeState = true;
+        this.state.curFrame = 0;
+        requestAnimationFrame(coreAnimateHandler.bind(this), this._timeStep);
+    } else if (this.state.repeat < this.repeatCount - 1) {
+        //重复动画
+        this.state.repeat++;
+        this.state.curFrame = 0;
+        this.state.resveringeState = false;
+        requestAnimationFrame(coreAnimateHandler.bind(this), this._timeStep);
+    } else {
+        this.state.curValue = this.stopValue;
+        this.stop();
+    }
+
+    this.state.curFrame++;
+};
+
+Animation.prototype = {
+    constructor: Animation,
+    init: function init() {
+        //计算总帧数
+        this._totalFrames = this.duration / 1000 * this.fps;
+        //计算定时器间隔
+        this._timeStep = Math.round(1000 / this.fps);
+        //判断valueType
+        switch (_typeof(this.startValue)) {
+            case 'object':
+                this._valueType = valueTypes.object;
+                break;
+            case 'number':
+                this._valueType = valueTypes.number;
+                break;
+            default:
+                break;
+        }
+        //state curValue
+        this.state.curValue = deepClone(this.startValue);
+    },
+    start: function start() {
+        if (this.state.stateType !== stateTypes.idle) {
+            return;
+        }
+
+        this.state.stateType = stateTypes.running;
+
+        setTimeout(function () {
+            this.didStartCB && this.didStartCB();
+            this._lastTimeStamp = Date.now();
+            this.lastState = deepClone(this.state);
+            requestAnimationFrame(coreAnimateHandler.bind(this), this._timeStep);
+        }.bind(this), this.startDelay);
+    },
+    stop: function stop() {
+        //reset
+        this.state.stateType = stateTypes.idle;
+        this.state.curValue = 0;
+        this.state.curFrame = 0;
+        this.state.repeat = 0;
+        this.state.resveringeState = false;
+
+        this.didStopCB && this.didStopCB();
+    },
+    pause: function pause() {
+        if (this.state.stateType === stateTypes.running) {
+            this.state.stateType = stateTypes.paused;
+            this.didPauseCB && this.didPauseCB();
+        }
+    },
+    resume: function resume() {
+        if (this.state.stateType === stateTypes.paused) {
+            this.state.stateType = stateTypes.running;
+            requestAnimationFrame(coreAnimateHandler.bind(this), this._timeStep);
+        }
+    }
+};
+
+/**
+ * 根据阻尼系数，弹力系数，初始速度，初始位置信息，计算出进度p关于时间t的函数
+ * @param  {num} damping         阻尼系数
+ * @param  {num} stiffness       弹力系数
+ * @param  {num} initialVelocity 初始速度
+ * @param  {num} startX          初始位置
+ * @return {fun}                 p关于t的函数
+ */
+var calTimingFunctionBySpring = function calTimingFunctionBySpring(damping, stiffness, initialVelocity, startX) {
+    var c = damping;
+    var k = stiffness;
+    var v = initialVelocity;
+    var t = c * c - 4 * k;
+    var r1, r2;
+    var alpha, beta;
+    var f0;
+    var fp0;
+    f0 = (startX || 0) - 1;
+    fp0 = v;
+    var C1, C2;
+    if (t > 0) {
+        t = Math.sqrt(t);
+        r1 = (-c + t) * 0.5;
+        r2 = (-c - t) * 0.5;
+
+        C1 = (fp0 - r2 * f0) / (r1 - r2);
+        C2 = (fp0 - r1 * f0) / (r2 - r1);
+        return function (t) {
+            return C1 * Math.exp(r1 * t) + C2 * Math.exp(r2 * t) + 1;
+        };
+    } else if (t == 0) {
+        r1 = -c * 0.5;
+        C1 = f0;
+        C2 = fp0 - C1 * r1;
+        return function (t) {
+            return (C1 + C2 * t) * Math.exp(r1 * t) + 1;
+        };
+    } else {
+        t = Math.sqrt(-t);
+        alpha = -c * 0.5;
+        beta = t * 0.5;
+
+        C1 = f0;
+        C2 = (fp0 - alpha * f0) / beta;
+        return function (t) {
+            return (C1 * Math.cos(beta * t) + C2 * Math.sin(beta * t)) * Math.exp(alpha * t) + 1;
+        };
+    }
+};
+
+/**
+ * initialVelocity 初始速度
+ * damping 阻尼系数,一般为12
+ * stiffness 弹力系数,一般为180
+ * duration 弹跳动画持续时间，一般为2000ms
+ */
+var SpringAnimation = function SpringAnimation(target, key, initialVelocity, damping, stiffness, startValue, stopValue, duration, startX) {
+    Animation.apply(this, [target, key, startValue, stopValue, duration]);
+    this.initialVelocity = initialVelocity || 0;
+    this.damping = damping || 12;
+    this.stiffness = stiffness || 180;
+    this.startX = startX || 0;
+};
+//继承Animation
+SpringAnimation.prototype = Object.create(Animation.prototype);
+
+var springAnimateHandler = function springAnimateHandler() {
+    if (this.state.stateType !== stateTypes.running) {
+        return;
+    }
+    this._p = this.timingFun(this.state.curFrame / this._totalFrames);
+
+    if (this.startX === 0) {
+        this.state.curValue = this._valueType !== valueTypes.object ? interpolateNumber(this.startValue, this.stopValue, this._p) : interpolateObject(this.startValue, this.stopValue, this._p);
+    } else if (this.startX === 1) {
+        //在平衡位置，以一个初速度开始弹跳
+        this.state.curValue = this._p - 1;
+    }
+
+    if (this.target && this.target.hasOwnProperty(this.key)) {
+        this.target[this.key] = this.state.curValue;
+    }
+
+    this.onFrameCB && this.onFrameCB();
+    if (this.state.curFrame < this._totalFrames) {
+        requestAnimationFrame(springAnimateHandler.bind(this), this._timeStep);
+    } else {
+        this.state.curValue = this.stopValue;
+        this.didStopCB && this.didStopCB();
+        this.stop();
+    }
+    this.state.curFrame++;
+};
+
+Object.assign(SpringAnimation.prototype, {
+    constructor: SpringAnimation,
+    start: function start() {
+        if (this.state.stateType !== stateTypes.idle) {
+            return;
+        }
+        this.state.stateType = stateTypes.running;
+        this.timingFun = calTimingFunctionBySpring(this.damping, this.stiffness, this.initialVelocity, this.startX);
+        setTimeout(function () {
+            this.didStartCB && this.didStartCB();
+            this._timeStamp = Date.now();
+            requestAnimationFrame(springAnimateHandler.bind(this), this._timeStep);
+        }.bind(this), this.startDelay);
+    }
+});
+
+//惯性滚动动画
+var InertialAnimation = function InertialAnimation(target, key, startValue, stopValue, amplitude, opts) {
+    Animation.apply(this, [target, key, startValue, stopValue, null, opts]);
+
+    this.amplitude = amplitude;
+    this.init();
+};
+
+var inertialAnimateHandler = function inertialAnimateHandler() {
+    var elapsed = Date.now() - this._timeStamp;
+    var state = this.state;
+
+    if (this.state.stateType !== stateTypes.running) {
+        return;
+    }
+
+    state.curValue = calInertialValue(this.stopValue, this.amplitude, elapsed, this._valueType);
+    if (this._valueType === valueTypes.object) {
+        var len = 0;
+        var i = 0;
+        for (var key in state.curValue) {
+            if (state.curValue.hasOwnProperty(key)) {
+                len++;
+                if (Math.abs(this.stopValue[key] - state.curValue[key]) < 1) {
+                    i++;
+                    state.curValue[key] = this.stopValue[key];
+                }
+            }
+        }
+        if (i === len) {
+            //所有属性都已达到临界值
+            this.onFrameCB && this.onFrameCB();
+            this.stop();
+            return;
+        }
+    } else if (this._valueType === valueTypes.number) {
+        if (Math.abs(this.stopValue - state.curValue) < 1) {
+            state.curValue = this.stopValue;
+            this.onFrameCB && this.onFrameCB();
+            this.stop();
+            return;
+        }
+    }
+
+    this.onFrameCB && this.onFrameCB();
+
+    this._lastTimeStamp = Date.now();
+    this.lastState = deepClone(this.state);
+    requestAnimationFrame(inertialAnimateHandler.bind(this), this._timeStep);
+};
+
+/**
+ * y`目标位置，A当前振幅(速度),c时间常量
+ * y(t)=y`-A*e^(-t/c)
+ * timeConstant = 500; //时间常量，用于惯性滚动的计算中,IOS中为325
+ * 返回值为y(t)
+ */
+
+var calInertialValue = function calInertialValue(target, amplitude, elapsed, valueType) {
+    var timeConstant = 500;
+
+    if (valueType === valueTypes.object) {
+        var obj = {};
+        for (var key in target) {
+            if (target.hasOwnProperty(key)) {
+                obj[key] = target[key] - amplitude[key] * Math.exp(-elapsed / timeConstant);
+            }
+        }
+        return obj;
+    } else {
+        return target - amplitude * Math.exp(-elapsed / timeConstant);
+    }
+};
+
+//继承Animation
+InertialAnimation.prototype = Object.create(Animation.prototype);
+Object.assign(InertialAnimation.prototype, {
+    constructor: InertialAnimation,
+    start: function start() {
+        if (this.state.stateType !== stateTypes.idle) {
+            return;
+        }
+
+        this.state.stateType = stateTypes.running;
+
+        setTimeout(function () {
+            this.didStartCB && this.didStartCB();
+            this._timeStamp = Date.now();
+            this._lastTimeStamp = Date.now();
+            this.lastState = deepClone(this.state);
+            requestAnimationFrame(inertialAnimateHandler.bind(this), this._timeStep);
+        }.bind(this), this.startDelay);
+    }
+});
+
+/**
  * Created by lixiang on 2018/2/26.
  */
 
 var Painter = function () {
-    function Painter(canvas, backCanvas, storage, params) {
+    function Painter(canvas, backCanvas, storage, params, options) {
         classCallCheck(this, Painter);
 
         this.canvas = canvas;
@@ -297,6 +868,7 @@ var Painter = function () {
         this.storage = storage;
         this.objects = this.storage.objects;
         this.params = params;
+        this.options = options;
 
         this.ctx = canvas.getContext('2d');
         this.bgCtx = backCanvas.getContext('2d');
@@ -306,26 +878,40 @@ var Painter = function () {
         key: 'renderAll',
         value: function renderAll() {
             var objs = this.objects;
-            console.log('this', this);
-            return;
+            var params = this.params;
+            var options = this.options;
+            var ctx = this.ctx;
+
             //clear zone
-            clearCtx(this.ctx, { w: this.canvas.width, h: this.canvas.height });
+            clearCtx(ctx, { w: this.canvas.width, h: this.canvas.height });
+
             for (var i = 0, il = objs.length; i < il; i++) {
                 switch (objs[i].type) {
                     case GraphType.Rect:
-                        drawRect(this.ctx, objs[i]);
+                        drawRect(ctx, objs[i]);
                         break;
                     case GraphType.Circle:
-                        drawCircle(this.ctx, objs[i]);
+                        drawCircle(ctx, objs[i]);
                         break;
                     case GraphType.Image:
-                        drawImage(this.ctx, objs[i]);
+                        drawImage(ctx, objs[i]);
                         break;
                     default:
                         console.error('not match type in render all');
                         break;
                 }
             }
+
+            //demo
+            ctx.setTransform(1, 0, 0, 1, params.x, params.y);
+            ctx.save();
+            ctx.fillStyle = "#f00";
+            ctx.fillRect(20, 20, 20, 20);
+            ctx.restore();
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+            //draw scroll bar
+            // drawScrollBar(ctx, params, options);
         }
     }]);
     return Painter;
@@ -338,7 +924,9 @@ function clearCtx(ctx, opts) {
     y = opts.y || 0;
     w = opts.w || 0;
     h = opts.h || 0;
+    ctx.save();
     ctx.clearRect(x, y, w, h);
+    ctx.restore();
 }
 
 function drawRect(ctx, obj) {
@@ -445,7 +1033,6 @@ var Storage = function () {
 /**
  * Created by lixiang on 2018/3/23.
  */
-
 var DEFAULT_OPTIONS = {
     width: 500,
     height: 500,
@@ -462,8 +1049,7 @@ var DEFAULT_OPTIONS = {
     momentumLimitTime: 300,
     momentumLimitDistance: 15,
     bounce: true, //是否开启弹跳效果
-    bounceTime: 800, //弹跳动画的持续时间，普遍采用800
-    startTime: 0
+    bounceTime: 800 //弹跳动画的持续时间，普遍采用800
 };
 
 //scroll 的默认参数
@@ -487,8 +1073,97 @@ var DEFAULT_PARAMS = {
     overflowX: 0, //开启bounce时，超出的长度
     overflowY: 0,
     animateTimer: null, //动画的引用
-    isAnimating: false //是否正在动画
+    isAnimating: false, //是否正在动画
+    startTime: 0,
+    endTime: 0
 };
+
+var Init = {
+    _handleOptions: function _handleOptions(opts) {
+        if (opts.contentWidth === undefined || opts.contentWidth < opts.width) {
+            opts.contentWidth = opts.width;
+        }
+
+        if (opts.contentHeight === undefined || opts.contentHeight < opts.height) {
+            opts.contentHeight = opts.height;
+        }
+
+        this.options = extend({}, DEFAULT_OPTIONS, opts);
+    },
+
+    _handleElements: function _handleElements(id) {
+        this._rootEle = document.getElementById(id);
+
+        this._wrapperEle = document.createElement("div");
+        this._canvasEle = document.createElement("canvas");
+        this._bgCanvasEle = document.createElement("canvas");
+
+        this._wrapperEle.style.position = "relative";
+        this._wrapperEle.style.margin = "auto";
+        this._wrapperEle.style.width = this.options.width + "px";
+        this._wrapperEle.style.height = this.options.height + "px";
+
+        this._canvasEle.style.position = "absolute";
+        this._canvasEle.width = this.options.width;
+        this._canvasEle.height = this.options.height;
+
+        this._bgCanvasEle.style.position = "absolute";
+        this._bgCanvasEle.width = this.options.width;
+        this._bgCanvasEle.height = this.options.height;
+
+        this._wrapperEle.appendChild(this._bgCanvasEle);
+        this._wrapperEle.appendChild(this._canvasEle);
+
+        this._rootEle.appendChild(this._wrapperEle);
+    },
+
+    _handleDomEvents: function _handleDomEvents() {
+        if (!this.options.disableMouse) {
+            this._canvasEle.addEventListener("mousedown", this, false);
+            this._canvasEle.addEventListener("mouseup", this, false);
+            this._canvasEle.addEventListener("mousemove", this, false);
+            this._canvasEle.addEventListener("mouseout", this, false);
+        }
+
+        if (!this.options.disableTouch) {
+            this._canvasEle.addEventListener("touchstart", this, false);
+            this._canvasEle.addEventListener("touchmove", this, false);
+            this._canvasEle.addEventListener("touchcancel", this, false);
+            this._canvasEle.addEventListener("touchend", this, false);
+        }
+    },
+
+    _handleCustomEvents: function _handleCustomEvents() {},
+
+    _handleInit: function _handleInit() {
+        this._params = extend({}, DEFAULT_PARAMS);
+        this._storage = new Storage();
+        this._painter = new Painter(this._canvasEle, this._bgCanvasEle, this._storage, this._params, this.options);
+
+        this._params.scrollX = this.options.contentWidth > this.options.width ? true : false;
+        this._params.scrollY = this.options.contentHeight > this.options.height ? true : false;
+        this._params.scroll = this._params.scrollX || this._params.scrollY;
+        this._params.minScrollX = this.options.width - this.options.contentWidth;
+        this._params.minScrollY = this.options.height - this.options.contentHeight;
+
+        var bgColor = this.options.backgroundColor;
+        var bgImage = this.options.backgroundImage;
+
+        if (!!bgColor && checkType(bgColor) === BaseType.String) {
+            this._bgCanvasEle.style.backgroundColor = bgColor;
+        }
+
+        if (!!bgImage && checkType(bgImage) === BaseType.String) {
+            this._bgCanvasEle.style.background = bgImage;
+        }
+
+        this._painter.renderAll();
+    }
+};
+
+/**
+ * Created by lixiang on 2018/3/23.
+ */
 
 var SXRender = function (_EventDispatcher) {
     inherits(SXRender, _EventDispatcher);
@@ -515,92 +1190,6 @@ var SXRender = function (_EventDispatcher) {
     }
 
     createClass(SXRender, [{
-        key: '_handleOptions',
-        value: function _handleOptions(opts) {
-            if (opts.contentWidth === undefined || opts.contentWidth < opts.width) {
-                opts.contentWidth = opts.width;
-            }
-
-            if (opts.contentHeight === undefined || opts.contentHeight < opts.height) {
-                opts.contentHeight = opts.height;
-            }
-
-            this.options = extend({}, DEFAULT_OPTIONS, opts);
-        }
-    }, {
-        key: '_handleElements',
-        value: function _handleElements(id) {
-            this._rootEle = document.getElementById(id);
-
-            this._wrapperEle = document.createElement("div");
-            this._canvasEle = document.createElement("canvas");
-            this._bgCanvasEle = document.createElement("canvas");
-
-            this._wrapperEle.style.position = "relative";
-            this._wrapperEle.style.margin = "auto";
-            this._wrapperEle.style.width = this.options.width + "px";
-            this._wrapperEle.style.height = this.options.height + "px";
-
-            this._canvasEle.style.position = "absolute";
-            this._canvasEle.style.width = this.options.width + "px";
-            this._canvasEle.style.height = this.options.height + "px";
-
-            this._bgCanvasEle.style.position = "absolute";
-            this._bgCanvasEle.style.width = this.options.width + "px";
-            this._bgCanvasEle.style.height = this.options.height + "px";
-
-            this._wrapperEle.appendChild(this._bgCanvasEle);
-            this._wrapperEle.appendChild(this._canvasEle);
-
-            this._rootEle.appendChild(this._wrapperEle);
-        }
-    }, {
-        key: '_handleDomEvents',
-        value: function _handleDomEvents() {
-            if (!this.options.disableMouse) {
-                this._canvasEle.addEventListener("mousedown", this, false);
-                this._canvasEle.addEventListener("mouseup", this, false);
-                this._canvasEle.addEventListener("mousemove", this, false);
-                this._canvasEle.addEventListener("mouseout", this, false);
-            }
-
-            if (!this.options.disableTouch) {
-                this._canvasEle.addEventListener("touchstart", this, false);
-                this._canvasEle.addEventListener("touchmove", this, false);
-                this._canvasEle.addEventListener("touchcancel", this, false);
-                this._canvasEle.addEventListener("touchend", this, false);
-            }
-        }
-    }, {
-        key: '_handleCustomEvents',
-        value: function _handleCustomEvents() {
-            this.on('scrolling', this.render, this);
-        }
-    }, {
-        key: '_handleInit',
-        value: function _handleInit() {
-            this._params = extend({}, DEFAULT_PARAMS);
-            this._storage = new Storage();
-            this._painter = new Painter(this._canvasEle, this._bgCanvasEle, this._storage, this._params);
-
-            this._params.scrollX = this.options.contentWidth > this.options.width ? true : false;
-            this._params.scrollY = this.options.contentHeight > this.options.height ? true : false;
-            this._params.scroll = this._params.scrollX || this._params.scrollY;
-            this._params.minScrollX = this.options.width - this.options.contentWidth;
-            this._params.maxScrollX = this.options.height - this.options.contentHeight;
-
-            var bgColor = this.options.backgroundColor;
-            var bgImage = this.options.backgroundImage;
-
-            if (!!bgColor && checkType(bgColor) === BaseType.String) {
-                this._bgCanvasEle.style.backgroundColor = bgColor;
-            }
-
-            if (!!bgImage && checkType(bgImage) === BaseType.String) {
-                this._bgCanvasEle.style.background = bgImage;
-            }
-        }
-    }, {
         key: 'handleEvent',
         value: function handleEvent(e) {
             //事件包装
@@ -620,7 +1209,7 @@ var SXRender = function (_EventDispatcher) {
                 case "mouseout":
                 case "touchend":
                 case "touchcancel":
-                    this.scroll ? this._endScroll(e) : null;
+                    this._endScroll(e);
                     break;
             }
         }
@@ -651,9 +1240,12 @@ var SXRender = function (_EventDispatcher) {
             params.distX = 0;
             params.distY = 0;
 
+            params.startX = params.x;
+            params.startY = params.y;
+
             params.startTime = getNow();
 
-            this.trigger('beforeScrollStart');
+            this._stopScroll();
         }
     }, {
         key: '_moveScroll',
@@ -663,6 +1255,7 @@ var SXRender = function (_EventDispatcher) {
             var options = this.options;
             var newX = void 0,
                 newY = void 0;
+            var timestamp = void 0;
 
             if (!params.scroll || !params.scrolling) {
                 return;
@@ -676,6 +1269,8 @@ var SXRender = function (_EventDispatcher) {
                 e.stopPropagation();
             }
 
+            timestamp = getNow();
+
             params.distX += e.movementX;
             params.distY += e.movementY;
             params.pointX = e.pageX;
@@ -684,17 +1279,17 @@ var SXRender = function (_EventDispatcher) {
             newX = params.x + e.movementX;
             newY = params.y + e.movementY;
 
-            if (!options.scrollX) {
+            if (!params.scrollX) {
                 newX = 0;
             }
-            if (!options.scrollY) {
+            if (!params.scrollY) {
                 newY = 0;
             }
 
             //到达边缘，减速或停止移动
             if (newX < params.minScrollX || newX > params.maxScrollX) {
-                params.overflowX += e.movementX;
                 if (options.bounce) {
+                    params.overflowX += e.movementX;
                     newX = (newX < params.minScrollX ? params.minScrollX : params.maxScrollX) + rubberBanding(params.overflowX, options.width);
                 } else {
                     newX = newX < params.minScrollX ? params.minScrollX : params.maxScrollX;
@@ -702,54 +1297,123 @@ var SXRender = function (_EventDispatcher) {
             }
 
             if (newY < params.minScrollY || newY > params.maxScrollY) {
-                params.overflowY += e.movementY;
                 if (options.bounce) {
+                    params.overflowY += e.movementY;
                     newY = (newY < params.minScrollY ? params.minScrollY : params.maxScrollY) + rubberBanding(params.overflowY, options.height);
                 } else {
                     newY = newY < params.minScrollY ? params.minScrollY : params.maxScrollY;
                 }
             }
 
-            params.x = newX;
-            params.y = newY;
+            if (timestamp - params.startTime > options.momentumLimitTime) {
+                params.startTime = timestamp;
+                params.startX = this.x;
+                params.startY = this.y;
+            }
 
-            this.trigger('scrolling');
+            this._translate(newX, newY);
         }
     }, {
         key: '_endScroll',
         value: function _endScroll(e) {
-            //不能滚动，直接返回
             var params = this._params;
+            var options = this.options;
+
+            //不能滚动，直接返回
             if (!params.scroll) {
                 return;
             }
-
             params.scrolling = false;
+
+            //如果超出边界，就重置位置，并且重置结束后直接返回，不用执行动量动画
+            if (this._resetPosition(options.bounceTime, Ease.bounce)) {
+                return;
+            }
         }
     }, {
-        key: 'resetPosition',
-        value: function resetPosition() {
-            
+        key: '_resetPosition',
+        value: function _resetPosition() {
+            var time = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 0;
+            var easing = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : Ease.bounce;
+
+            var params = this._params;
+            var options = this.options;
+            var x = void 0,
+                y = void 0;
+
+            x = Math.round(params.x);
+            y = Math.round(params.y);
+
+            if (x > params.maxScrollX) {
+                x = params.maxScrollX;
+            } else if (x < params.minScrollX) {
+                x = params.minScrollX;
+            }
+
+            if (y > params.maxScrollY) {
+                y = params.maxScrollY;
+            } else if (y < params.minScrollY) {
+                y = params.minScrollY;
+            }
+
+            if (x === params.x && y === params.y) {
+                return false;
+            }
+
+            //开启回弹动画
+            this._scrollTo(x, y, time, easing);
+            return true;
         }
     }, {
-        key: 'scrollTo',
-        value: function scrollTo(x, y) {
-            
+        key: '_scrollTo',
+        value: function _scrollTo(x, y) {
+            var time = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0;
+            var easing = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : Ease.bounce;
+
+            //将内容移动到某处，使用动画效果,只能使用js动画
+            this._scrollAnimate(x, y, time, easing);
         }
     }, {
-        key: '_animate',
-        value: function _animate(destX, destY, duration, easingFn) {}
+        key: '_scrollAnimate',
+        value: function _scrollAnimate(destX, destY, duration, easingFn) {
+            var params = this._params;
+            var options = this.options;
+            var self = this;
+            params.isAnimating = true;
+            params.animateTimer = new Animation(null, '', { x: params.x, y: params.y, overflowX: params.overflowX, overflowY: params.overflowY }, {
+                x: destX,
+                y: destY,
+                overflowX: 0,
+                overflowY: 0
+            }, options.bounceTime);
+            params.animateTimer.onFrameCB = function () {
+                params.overflowX = this.state.curValue.overflowX;
+                params.overflowY = this.state.curValue.overflowY;
+                self._translate(this.state.curValue.x, this.state.curValue.y);
+            };
+            params.animateTimer.start();
+        }
     }, {
-        key: '_stop',
-        value: function _stop() {}
+        key: '_stopScroll',
+        value: function _stopScroll() {
+            var params = this._params;
+
+            params.animateTimer && params.animateTimer.stop();
+        }
     }, {
-        key: 'render',
-        value: function render() {
+        key: '_translate',
+        value: function _translate(newX, newY) {
+            var params = this._params;
+            params.x = newX;
+            params.y = newY;
+
             this._painter.renderAll();
         }
     }]);
     return SXRender;
 }(EventDispatcher);
+
+mixin(SXRender, Init, false);
 
 return SXRender;
 

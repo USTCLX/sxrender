@@ -3,53 +3,9 @@
  */
 
 import EventDispatcher from './EventDispatcher'
-import Painter from '../painter/painter';
-import Storage from '../storage/storage';
-import {BaseType, checkType, eventUtil, extend, getNow, rubberBanding, Ease} from "../utils/utils";
-
-const DEFAULT_OPTIONS = {
-    width: 500,
-    height: 500,
-    contentWidth: 500,
-    contentHeight: 500,
-    backgroundColor: '',
-    backgroundImage: '',
-    scrollBar: false,
-    scrollBarFade: false,
-    disableTouch: true,
-    disableMouse: false,
-    preventDefault: true,
-    stopPropagation: true,
-    momentumLimitTime: 300,
-    momentumLimitDistance: 15,
-    bounce: true,//是否开启弹跳效果
-    bounceTime: 800,//弹跳动画的持续时间，普遍采用800
-    startTime:0
-};
-
-//scroll 的默认参数
-const DEFAULT_PARAMS = {
-    x:0,
-    y:0,
-    distX:0, //鼠标按下后，移动的绝对距离
-    distY:0,
-    pointX:0, //鼠标按下的点，相对于page,并在移动时更新
-    pointY:0,
-    startX:0, //移动的开始位置
-    startY:0,
-    scroll:false,//是否可以滚动，
-    scrollX:false,//是否可以沿X轴滚动
-    scrollY:false,//是否可以沿Y轴滚动
-    scrolling:false,//是否正在scroll中
-    maxScrollX:0,
-    minScrollX:0,
-    maxScrollY:0,
-    minScrollY:0,
-    overflowX:0,//开启bounce时，超出的长度
-    overflowY:0,
-    animateTimer:null,  //动画的引用
-    isAnimating:false  //是否正在动画
-};
+import {Animation, SpringAnimation} from '../Animation';
+import {BaseType, checkType, eventUtil, mixin, getNow, rubberBanding, Ease} from "../utils/utils";
+import Init from './init'
 
 class SXRender extends EventDispatcher {
     constructor(id, opts) {
@@ -67,87 +23,6 @@ class SXRender extends EventDispatcher {
         this._handleInit();
 
         return this;
-    }
-
-    _handleOptions(opts) {
-        if (opts.contentWidth === undefined || opts.contentWidth < opts.width) {
-            opts.contentWidth = opts.width;
-        }
-
-        if (opts.contentHeight === undefined || opts.contentHeight < opts.height) {
-            opts.contentHeight = opts.height;
-        }
-
-        this.options = extend({}, DEFAULT_OPTIONS, opts);
-    }
-
-    _handleElements(id) {
-        this._rootEle = document.getElementById(id);
-
-        this._wrapperEle = document.createElement("div");
-        this._canvasEle = document.createElement("canvas");
-        this._bgCanvasEle = document.createElement("canvas");
-
-        this._wrapperEle.style.position = "relative";
-        this._wrapperEle.style.margin = "auto";
-        this._wrapperEle.style.width = this.options.width + "px";
-        this._wrapperEle.style.height = this.options.height + "px";
-
-        this._canvasEle.style.position = "absolute";
-        this._canvasEle.style.width = this.options.width + "px";
-        this._canvasEle.style.height = this.options.height + "px";
-
-        this._bgCanvasEle.style.position = "absolute";
-        this._bgCanvasEle.style.width = this.options.width + "px";
-        this._bgCanvasEle.style.height = this.options.height + "px";
-
-        this._wrapperEle.appendChild(this._bgCanvasEle);
-        this._wrapperEle.appendChild(this._canvasEle);
-
-        this._rootEle.appendChild(this._wrapperEle);
-    }
-
-    _handleDomEvents() {
-        if (!this.options.disableMouse) {
-            this._canvasEle.addEventListener("mousedown", this, false);
-            this._canvasEle.addEventListener("mouseup", this, false);
-            this._canvasEle.addEventListener("mousemove", this, false);
-            this._canvasEle.addEventListener("mouseout", this, false);
-        }
-
-        if (!this.options.disableTouch) {
-            this._canvasEle.addEventListener("touchstart", this, false);
-            this._canvasEle.addEventListener("touchmove", this, false);
-            this._canvasEle.addEventListener("touchcancel", this, false);
-            this._canvasEle.addEventListener("touchend", this, false);
-        }
-    }
-
-    _handleCustomEvents(){
-        this.on('scrolling',this.render,this);
-    }
-
-    _handleInit() {
-        this._params = extend({},DEFAULT_PARAMS);
-        this._storage = new Storage();
-        this._painter = new Painter(this._canvasEle, this._bgCanvasEle, this._storage,this._params);
-
-        this._params.scrollX = (this.options.contentWidth > this.options.width) ? true: false;
-        this._params.scrollY = (this.options.contentHeight > this.options.height) ? true : false;
-        this._params.scroll = this._params.scrollX||this._params.scrollY;
-        this._params.minScrollX = this.options.width-this.options.contentWidth;
-        this._params.maxScrollX = this.options.height-this.options.contentHeight;
-
-        let bgColor = this.options.backgroundColor;
-        let bgImage = this.options.backgroundImage;
-
-        if (!!bgColor && (checkType(bgColor) === BaseType.String)) {
-            this._bgCanvasEle.style.backgroundColor = bgColor;
-        }
-
-        if (!!bgImage && (checkType(bgImage) === BaseType.String)) {
-            this._bgCanvasEle.style.background = bgImage;
-        }
     }
 
     handleEvent(e) {
@@ -168,7 +43,7 @@ class SXRender extends EventDispatcher {
             case "mouseout":
             case "touchend":
             case "touchcancel":
-                this.scroll ? this._endScroll(e) : null;
+                this._endScroll(e);
                 break;
         }
     }
@@ -198,9 +73,12 @@ class SXRender extends EventDispatcher {
         params.distX = 0;
         params.distY = 0;
 
+        params.startX = params.x;
+        params.startY = params.y;
+
         params.startTime = getNow();
 
-        this.trigger('beforeScrollStart');
+        this._stopScroll();
     }
 
     _moveScroll(e) {
@@ -208,6 +86,7 @@ class SXRender extends EventDispatcher {
         let params = this._params;
         let options = this.options;
         let newX, newY;
+        let timestamp;
 
         if (!params.scroll || !params.scrolling) {
             return;
@@ -221,6 +100,8 @@ class SXRender extends EventDispatcher {
             e.stopPropagation();
         }
 
+        timestamp = getNow();
+
         params.distX += e.movementX;
         params.distY += e.movementY;
         params.pointX = e.pageX;
@@ -229,18 +110,17 @@ class SXRender extends EventDispatcher {
         newX = params.x + e.movementX;
         newY = params.y + e.movementY;
 
-        if (!options.scrollX) {
+        if (!params.scrollX) {
             newX = 0;
         }
-        if (!options.scrollY) {
+        if (!params.scrollY) {
             newY = 0;
         }
 
-
         //到达边缘，减速或停止移动
         if (newX < params.minScrollX || newX > params.maxScrollX) {
-            params.overflowX += e.movementX;
             if (options.bounce) {
+                params.overflowX += e.movementX;
                 newX = (newX < params.minScrollX ? params.minScrollX : params.maxScrollX) + rubberBanding(params.overflowX, options.width);
             } else {
                 newX = (newX < params.minScrollX) ? params.minScrollX : params.maxScrollX;
@@ -248,49 +128,108 @@ class SXRender extends EventDispatcher {
         }
 
         if (newY < params.minScrollY || newY > params.maxScrollY) {
-            params.overflowY += e.movementY;
             if (options.bounce) {
+                params.overflowY += e.movementY;
                 newY = (newY < params.minScrollY ? params.minScrollY : params.maxScrollY) + rubberBanding(params.overflowY, options.height);
             } else {
                 newY = (newY < params.minScrollY) ? params.minScrollY : params.maxScrollY;
             }
         }
 
-        params.x = newX;
-        params.y = newY;
+        if (timestamp - params.startTime > options.momentumLimitTime) {
+            params.startTime = timestamp;
+            params.startX = this.x;
+            params.startY = this.y;
+        }
 
-        this.trigger('scrolling');
+        this._translate(newX, newY);
     }
 
     _endScroll(e) {
-        //不能滚动，直接返回
         let params = this._params;
+        let options = this.options;
+
+        //不能滚动，直接返回
         if (!params.scroll) {
             return;
         }
-
         params.scrolling = false;
+
+        //如果超出边界，就重置位置，并且重置结束后直接返回，不用执行动量动画
+        if (this._resetPosition(options.bounceTime, Ease.bounce)) {
+            return;
+        }
     }
 
     _resetPosition(time = 0, easing = Ease.bounce) {
+        let params = this._params;
+        let options = this.options;
+        let x, y;
 
+        x = Math.round(params.x);
+        y = Math.round(params.y);
+
+        if (x > params.maxScrollX) {
+            x = params.maxScrollX;
+        } else if (x < params.minScrollX) {
+            x = params.minScrollX
+        }
+
+        if (y > params.maxScrollY) {
+            y = params.maxScrollY;
+        } else if (y < params.minScrollY) {
+            y = params.minScrollY;
+        }
+
+        if (x === params.x && y === params.y) {
+            return false;
+        }
+
+        //开启回弹动画
+        this._scrollTo(x, y, time, easing);
+        return true;
     }
 
     _scrollTo(x, y, time = 0, easing = Ease.bounce) {
-
+        //将内容移动到某处，使用动画效果,只能使用js动画
+        this._scrollAnimate(x, y, time, easing);
     }
 
-    _animate(destX, destY, duration, easingFn) {
-
+    _scrollAnimate(destX, destY, duration, easingFn) {
+        let params = this._params;
+        let options = this.options;
+        let self = this;
+        params.isAnimating = true;
+        params.animateTimer = new Animation(null, '', {x: params.x, y: params.y,overflowX:params.overflowX,overflowY:params.overflowY}, {
+            x: destX,
+            y: destY,
+            overflowX:0,
+            overflowY:0
+        }, options.bounceTime);
+        params.animateTimer.onFrameCB = function () {
+            params.overflowX = this.state.curValue.overflowX;
+            params.overflowY = this.state.curValue.overflowY;
+            self._translate(this.state.curValue.x, this.state.curValue.y);
+        };
+        params.animateTimer.start();
     }
 
-    _stop() {
+    _stopScroll() {
+        let params = this._params;
 
+        params.animateTimer && params.animateTimer.stop();
     }
 
-    render(){
+    _translate(newX, newY) {
+        let params = this._params;
+        params.x = newX;
+        params.y = newY;
+
         this._painter.renderAll();
     }
+
 }
+
+mixin(SXRender, Init, false);
 
 export default SXRender;

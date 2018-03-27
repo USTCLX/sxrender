@@ -4,16 +4,17 @@
 
 import {GraphType} from '../utils/utils';
 
-const SCROLLBAR_WIDTH = 5;
-const SCROLLBAR_COLOR = "#eee";
+const SCROLLBAR_WIDTH = 4;
+const SCROLLBAR_COLOR = "#e00";
 
 class Painter {
-    constructor(canvas, backCanvas, storage, params) {
+    constructor(canvas, backCanvas, storage, params, options) {
         this.canvas = canvas;
         this.backCanvas = backCanvas;
         this.storage = storage;
         this.objects = this.storage.objects;
         this.params = params;
+        this.options = options;
 
         this.ctx = canvas.getContext('2d');
         this.bgCtx = backCanvas.getContext('2d');
@@ -22,10 +23,12 @@ class Painter {
     renderAll() {
         let objs = this.objects;
         let params = this.params;
+        let options = this.options;
         let ctx = this.ctx;
 
         //clear zone
         clearCtx(ctx, {w: this.canvas.width, h: this.canvas.height});
+
         for (var i = 0, il = objs.length; i < il; i++) {
             switch (objs[i].type) {
                 case GraphType.Rect:
@@ -43,13 +46,16 @@ class Painter {
             }
         }
 
-        if(params.scroll&&params.scrollX){
-            drawScrollBar(ctx,params,false)
-        }
+        //demo
+        ctx.setTransform(1,0,0,1,params.x,params.y);
+        ctx.save();
+        ctx.fillStyle = "#f00";
+        ctx.fillRect(20,20,20,20);
+        ctx.restore();
+        ctx.setTransform(1,0,0,1,0,0);
 
-        if(params.scroll&&params.scrollY){
-            drawScrollBar(ctx,params,true)
-        }
+        //draw scroll bar
+        // drawScrollBar(ctx, params, options);
     }
 
 }
@@ -61,7 +67,9 @@ function clearCtx(ctx, opts) {
     y = opts.y || 0;
     w = opts.w || 0;
     h = opts.h || 0;
-    ctx.clearRect(x, y, w, h)
+    ctx.save();
+    ctx.clearRect(x, y, w, h);
+    ctx.restore();
 }
 
 function drawRect(ctx, obj) {
@@ -119,13 +127,46 @@ function drawImage(ctx, obj) {
     ctx.restore();
 }
 
-function drawScrollBar(ctx,opts,vertical){
-    let height,width,x,y,color;
-    if(vertical){
+function drawScrollBar(ctx, params, options) {
+    let height,
+        width,
+        x,
+        y,
+        color = SCROLLBAR_COLOR;
+    let w1 = options.width,      //视口宽高
+        h1 = options.height,
+        w2 = options.contentWidth,//内容宽高
+        h2 = options.contentHeight;
 
-    }else{
+    let x2 = params.x,   //内容坐标
+        y2 = params.y,
+        overflowX = params.overflowX,
+        overflowY = params.overflowY;
+
+    if (!params.scroll) {
+        return;
+    }
+
+    if (params.scrollX) {
 
     }
+
+    if (params.scrollY) {
+        height = h1 * h1 / h2-Math.abs(overflowY);
+        height = (height<10)?10:height;
+
+        width = SCROLLBAR_WIDTH;
+
+        x = w1 - SCROLLBAR_WIDTH;
+
+        y = -height*y2/h2;
+        y = (y<0)?0:y;
+    }
+
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, width, height);
+    ctx.restore();
 }
 
 export default Painter;
