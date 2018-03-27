@@ -200,7 +200,7 @@ class SXRender extends EventDispatcher {
         let options = this.options;
         let self = this;
         params.isAnimating = true;
-        params.animateTimer = new SpringAnimation(null, '', 0, 12, 180, {
+        params.animateTimer = new SpringAnimation(params, ['x', 'y', 'overflowX', 'overflowY'], 0, 12, 180, {
             x: params.x,
             y: params.y,
             overflowX: params.overflowX,
@@ -210,11 +210,9 @@ class SXRender extends EventDispatcher {
             y: destY,
             overflowX: 0,
             overflowY: 0
-        }, options.bounceTime);
+        }, duration);
         params.animateTimer.onFrameCB = function () {
-            params.overflowX = this.state.curValue.overflowX;
-            params.overflowY = this.state.curValue.overflowY;
-            self._translate(this.state.curValue.x, this.state.curValue.y);
+            self._render();
         };
         params.animateTimer.start();
     }
@@ -230,6 +228,11 @@ class SXRender extends EventDispatcher {
         params.x = newX;
         params.y = newY;
 
+        this._render();
+
+    }
+
+    _render() {
         this._painter.renderAll();
     }
 

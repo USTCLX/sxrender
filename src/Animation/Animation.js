@@ -53,8 +53,8 @@ const coreAnimateHandler = function(){
 
     this.state.curValue = (this._valueType!==valueTypes.object)?interpolateNumber(this.startValue,this.stopValue,this._p,this.state.resveringeState):interpolateObject(this.startValue,this.stopValue,this._p,this.state.resveringeState);
 
-    if(this.target&&this.target.hasOwnProperty(this.key)){
-        this.target[this.key] = this.state.curValue;
+    if(this.target&&this.key){
+        this._changeTargetValue();
     }
 
     this.onFrameCB&&this.onFrameCB();
@@ -79,6 +79,7 @@ const coreAnimateHandler = function(){
         requestAnimationFrame(coreAnimateHandler.bind(this),this._timeStep);
     }else{
         this.state.curValue = this.stopValue;
+        this._changeTargetValue();
         this.stop();
     }
 
@@ -142,6 +143,25 @@ Animation.prototype = {
             this.state.stateType = stateTypes.running;
             requestAnimationFrame(coreAnimateHandler.bind(this),this._timeStep);
         }
+    },
+    _changeTargetValue(){
+        var state = this.state;
+        var key = this.key;
+        var target = this.target;
+        if((key instanceof String)&&(state.curValue.hasOwnProperty(this.key))){
+
+            target[key] = state.curValue;
+
+        }else if((key instanceof Array)){
+
+            key.forEach(function(item){
+                if(state.curValue.hasOwnProperty(item)&&target.hasOwnProperty(item)){
+                    target[item] = state.curValue[item];
+                }
+            })
+
+        }
+
     }
 };
 

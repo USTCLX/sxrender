@@ -83,8 +83,8 @@ const springAnimateHandler = function(){
         this.state.curValue = this._p-1;
     }
 
-    if(this.target&&this.target.hasOwnProperty(this.key)){
-        this.target[this.key] = this.state.curValue;
+    if(this.target&&this.key){
+        this._changeTargetValue();
     }
 
     this.onFrameCB&&this.onFrameCB();
@@ -92,7 +92,7 @@ const springAnimateHandler = function(){
         requestAnimationFrame(springAnimateHandler.bind(this),this._timeStep);
     }else{
         this.state.curValue = this.stopValue;
-        this.didStopCB&&this.didStopCB();
+        this._changeTargetValue();
         this.stop();
     }
     this.state.curFrame++;

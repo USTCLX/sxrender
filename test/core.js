@@ -490,9 +490,9 @@ function State(stateType, repeat, curFrame, curValue, reversing) {
 //插值
 function interpolateNumber(startValue, stopValue, progress, needReverse) {
     if (needReverse) {
-        return Math.round(stopValue + progress * (startValue - stopValue));
+        return stopValue + progress * (startValue - stopValue);
     } else {
-        return Math.round(startValue + progress * (stopValue - startValue));
+        return startValue + progress * (stopValue - startValue);
     }
 }
 
@@ -502,9 +502,9 @@ function interpolateObject(startObj, stopObj, progress, needReverse) {
     for (var key in obj) {
         if (obj.hasOwnProperty(key)) {
             if (needReverse) {
-                obj[key] = Math.round(stopObj[key] + progress * (startObj[key] - stopObj[key]));
+                obj[key] = stopObj[key] + progress * (startObj[key] - stopObj[key]);
             } else {
-                obj[key] = Math.round(startObj[key] + progress * (stopObj[key] - startObj[key]));
+                obj[key] = startObj[key] + progress * (stopObj[key] - startObj[key]);
             }
         }
     }
@@ -560,8 +560,8 @@ var coreAnimateHandler = function coreAnimateHandler() {
 
     this.state.curValue = this._valueType !== valueTypes.object ? interpolateNumber(this.startValue, this.stopValue, this._p, this.state.resveringeState) : interpolateObject(this.startValue, this.stopValue, this._p, this.state.resveringeState);
 
-    if (this.target && this.target.hasOwnProperty(this.key)) {
-        this.target[this.key] = this.state.curValue;
+    if (this.target && this.key) {
+        this._changeTargetValue();
     }
 
     this.onFrameCB && this.onFrameCB();
@@ -585,6 +585,7 @@ var coreAnimateHandler = function coreAnimateHandler() {
         requestAnimationFrame(coreAnimateHandler.bind(this), this._timeStep);
     } else {
         this.state.curValue = this.stopValue;
+        this._changeTargetValue();
         this.stop();
     }
 
@@ -646,6 +647,22 @@ Animation.prototype = {
         if (this.state.stateType === stateTypes.paused) {
             this.state.stateType = stateTypes.running;
             requestAnimationFrame(coreAnimateHandler.bind(this), this._timeStep);
+        }
+    },
+    _changeTargetValue: function _changeTargetValue() {
+        var state = this.state;
+        var key = this.key;
+        var target = this.target;
+        if (key instanceof String && state.curValue.hasOwnProperty(this.key)) {
+
+            target[key] = state.curValue;
+        } else if (key instanceof Array) {
+
+            key.forEach(function (item) {
+                if (state.curValue.hasOwnProperty(item) && target.hasOwnProperty(item)) {
+                    target[item] = state.curValue[item];
+                }
+            });
         }
     }
 };
@@ -729,8 +746,8 @@ var springAnimateHandler = function springAnimateHandler() {
         this.state.curValue = this._p - 1;
     }
 
-    if (this.target && this.target.hasOwnProperty(this.key)) {
-        this.target[this.key] = this.state.curValue;
+    if (this.target && this.key) {
+        this._changeTargetValue();
     }
 
     this.onFrameCB && this.onFrameCB();
@@ -738,7 +755,7 @@ var springAnimateHandler = function springAnimateHandler() {
         requestAnimationFrame(springAnimateHandler.bind(this), this._timeStep);
     } else {
         this.state.curValue = this.stopValue;
-        this.didStopCB && this.didStopCB();
+        this._changeTargetValue();
         this.stop();
     }
     this.state.curFrame++;
@@ -1380,7 +1397,7 @@ var SXRender = function (_EventDispatcher) {
             var options = this.options;
             var self = this;
             params.isAnimating = true;
-            params.animateTimer = new SpringAnimation(null, '', 0, 12, 180, {
+            params.animateTimer = new SpringAnimation(params, ['x', 'y', 'overflowX', 'overflowY'], 0, 12, 180, {
                 x: params.x,
                 y: params.y,
                 overflowX: params.overflowX,
@@ -1390,11 +1407,9 @@ var SXRender = function (_EventDispatcher) {
                 y: destY,
                 overflowX: 0,
                 overflowY: 0
-            }, options.bounceTime);
+            }, duration);
             params.animateTimer.onFrameCB = function () {
-                params.overflowX = this.state.curValue.overflowX;
-                params.overflowY = this.state.curValue.overflowY;
-                self._translate(this.state.curValue.x, this.state.curValue.y);
+                self._render();
             };
             params.animateTimer.start();
         }
@@ -1412,6 +1427,11 @@ var SXRender = function (_EventDispatcher) {
             params.x = newX;
             params.y = newY;
 
+            this._render();
+        }
+    }, {
+        key: '_render',
+        value: function _render() {
             this._painter.renderAll();
         }
     }]);

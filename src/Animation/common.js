@@ -60,9 +60,9 @@ function State(stateType,repeat,curFrame,curValue,reversing){
 //插值
 function interpolateNumber(startValue,stopValue,progress,needReverse){
     if(needReverse){
-        return Math.round(stopValue+progress*(startValue-stopValue));
+        return stopValue+progress*(startValue-stopValue);
     }else{
-        return Math.round(startValue+progress*(stopValue-startValue));
+        return startValue+progress*(stopValue-startValue);
     }
 }
 
@@ -72,9 +72,9 @@ function interpolateObject(startObj,stopObj,progress,needReverse){
     for(var key in obj){
         if(obj.hasOwnProperty(key)){
             if(needReverse){
-                obj[key] = Math.round(stopObj[key]+progress*(startObj[key]-stopObj[key]));
+                obj[key] = stopObj[key]+progress*(startObj[key]-stopObj[key]);
             }else{
-                obj[key] = Math.round(startObj[key]+progress*(stopObj[key]-startObj[key]));
+                obj[key] = startObj[key]+progress*(stopObj[key]-startObj[key]);
             }
         }
     }
