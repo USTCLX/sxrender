@@ -200,7 +200,7 @@ class SXRender extends EventDispatcher {
         let options = this.options;
         let self = this;
         params.isAnimating = true;
-        params.animateTimer = new Animation(null, '', {
+        params.animateTimer = new SpringAnimation(null, '', 0, 12, 180, {
             x: params.x,
             y: params.y,
             overflowX: params.overflowX,
@@ -210,7 +210,7 @@ class SXRender extends EventDispatcher {
             y: destY,
             overflowX: 0,
             overflowY: 0
-        }, options.bounceTime,{timingFun:easingFn.fn});
+        }, options.bounceTime);
         params.animateTimer.onFrameCB = function () {
             params.overflowX = this.state.curValue.overflowX;
             params.overflowY = this.state.curValue.overflowY;
