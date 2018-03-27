@@ -200,12 +200,17 @@ class SXRender extends EventDispatcher {
         let options = this.options;
         let self = this;
         params.isAnimating = true;
-        params.animateTimer = new Animation(null, '', {x: params.x, y: params.y,overflowX:params.overflowX,overflowY:params.overflowY}, {
+        params.animateTimer = new Animation(null, '', {
+            x: params.x,
+            y: params.y,
+            overflowX: params.overflowX,
+            overflowY: params.overflowY
+        }, {
             x: destX,
             y: destY,
-            overflowX:0,
-            overflowY:0
-        }, options.bounceTime);
+            overflowX: 0,
+            overflowY: 0
+        }, options.bounceTime,{timingFun:easingFn.fn});
         params.animateTimer.onFrameCB = function () {
             params.overflowX = this.state.curValue.overflowX;
             params.overflowY = this.state.curValue.overflowY;

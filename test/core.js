@@ -1380,12 +1380,17 @@ var SXRender = function (_EventDispatcher) {
             var options = this.options;
             var self = this;
             params.isAnimating = true;
-            params.animateTimer = new Animation(null, '', { x: params.x, y: params.y, overflowX: params.overflowX, overflowY: params.overflowY }, {
+            params.animateTimer = new Animation(null, '', {
+                x: params.x,
+                y: params.y,
+                overflowX: params.overflowX,
+                overflowY: params.overflowY
+            }, {
                 x: destX,
                 y: destY,
                 overflowX: 0,
                 overflowY: 0
-            }, options.bounceTime);
+            }, options.bounceTime, { timingFun: easingFn.fn });
             params.animateTimer.onFrameCB = function () {
                 params.overflowX = this.state.curValue.overflowX;
                 params.overflowY = this.state.curValue.overflowY;
