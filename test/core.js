@@ -1409,20 +1409,22 @@ var Scroll = {
     },
 
     /**
-     * 开启某种动画
-     * @param destX
+     * 开启动画动画
+     * @param destX  目标位置
      * @param destY
-     * @param duration
+     * @param duration 持续时间
      * @param easingFn
      * @private
      */
-    _scrollAnimate: function _scrollAnimate(destX, destY, duration, easingFn) {
+    _scrollAnimate: function _scrollAnimate(destX, destY, duration, easingFn, opts) {
         var params = this._params;
         var options = this.options;
         var self = this;
 
         if (easingFn === Ease.spring) {
-            params.animateTimer = new SpringAnimation(params, ['x', 'y', 'overflowX', 'overflowY'], 0, 12, 180, {
+            var v = opts && opts.v || 0;
+            var start = opts && opts.start || 0;
+            params.animateTimer = new SpringAnimation(params, ['x', 'y', 'overflowX', 'overflowY'], v, 12, 180, {
                 x: params.x,
                 y: params.y,
                 overflowX: params.overflowX,
@@ -1432,7 +1434,7 @@ var Scroll = {
                 y: destY,
                 overflowX: 0,
                 overflowY: 0
-            }, duration);
+            }, duration, start);
             params.animateTimer.didStartCB = function () {
                 params.isAnimating = true;
             };
@@ -1469,9 +1471,10 @@ var Scroll = {
      * @private
      */
     _stopScroll: function _stopScroll() {
-        var params = this._params;
+        var animateTimer = this._params.animateTimer;
 
-        params.animateTimer && params.animateTimer.stop();
+
+        animateTimer && animateTimer.stop();
     },
 
     /**

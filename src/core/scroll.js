@@ -214,20 +214,22 @@ const Scroll = {
     },
 
     /**
-     * 开启某种动画
-     * @param destX
+     * 开启动画动画
+     * @param destX  目标位置
      * @param destY
-     * @param duration
+     * @param duration 持续时间
      * @param easingFn
      * @private
      */
-    _scrollAnimate: function (destX, destY, duration, easingFn) {
+    _scrollAnimate: function (destX, destY, duration, easingFn, opts) {
         let params = this._params;
         let options = this.options;
         let self = this;
 
         if (easingFn === Ease.spring) {
-            params.animateTimer = new SpringAnimation(params, ['x', 'y', 'overflowX', 'overflowY'], 0, 12, 180, {
+            let v = (opts && opts.v) || 0;
+            let start = (opts && opts.start) || 0;
+            params.animateTimer = new SpringAnimation(params, ['x', 'y', 'overflowX', 'overflowY'], v, 12, 180, {
                 x: params.x,
                 y: params.y,
                 overflowX: params.overflowX,
@@ -237,8 +239,8 @@ const Scroll = {
                 y: destY,
                 overflowX: 0,
                 overflowY: 0
-            }, duration);
-            params.animateTimer.didStartCB = function(){
+            }, duration, start);
+            params.animateTimer.didStartCB = function () {
                 params.isAnimating = true;
             };
             params.animateTimer.onFrameCB = function () {
@@ -255,11 +257,12 @@ const Scroll = {
                 x: destX,
                 y: destY
             }, duration, {timingFun: easingFn.fn});
-            params.animateTimer.didStartCB = function(){
+            params.animateTimer.didStartCB = function () {
                 params.isAnimating = true;
             };
             params.animateTimer.onFrameCB = function () {
                 self._render();
+
             };
             params.animateTimer.didStopCB = function () {
                 params.isAnimating = false;
@@ -277,9 +280,9 @@ const Scroll = {
      * @private
      */
     _stopScroll: function () {
-        let params = this._params;
+        let {animateTimer} = this._params;
 
-        params.animateTimer && params.animateTimer.stop();
+        animateTimer && animateTimer.stop();
     },
 
     /**
