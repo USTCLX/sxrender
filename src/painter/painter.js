@@ -51,6 +51,11 @@ class Painter {
         ctx.save();
         ctx.fillStyle = "#f00";
         ctx.fillRect(20,20,20,20);
+        ctx.fillRect(20,100,20,20);
+        ctx.fillRect(20,200,20,20);
+        ctx.fillRect(20,300,20,20);
+        ctx.fillRect(20,500,20,20);
+        ctx.fillRect(20,600,20,20);
         ctx.restore();
         ctx.setTransform(1,0,0,1,0,0);
 

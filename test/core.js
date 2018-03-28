@@ -135,7 +135,7 @@ var rubberBanding = function rubberBanding(x, d) {
     if (x > 0) {
         return (1 - 1 / (x * c / d + 1)) * d;
     } else {
-        return (1 - 1 / (-x * c / d + 1)) * d;
+        return -(1 - 1 / (-x * c / d + 1)) * d;
     }
 };
 
@@ -249,11 +249,17 @@ var Ease = {
         }
     },
     //easeOutQuart
+    //此曲线也可用于弹回效果，先快后慢
     bounce: {
         style: 'cubic-bezier(0.165, 0.84, 0.44, 1)',
         fn: function fn(t) {
             return 1 - --t * t * t * t;
         }
+    },
+    spring: {
+        //弹簧效果，并没有具体实现，而是使用了SpringAnimation类来实现。此处用于判断
+        style: 'spring',
+        fn: function fn() {}
     }
 };
 
@@ -377,6 +383,320 @@ EventDispatcher.prototype.off = function (event, handler) {
                 break;
             }
         }
+    }
+};
+
+/**
+ * Created by lixiang on 2018/2/26.
+ */
+
+var Painter = function () {
+    function Painter(canvas, backCanvas, storage, params, options) {
+        classCallCheck(this, Painter);
+
+        this.canvas = canvas;
+        this.backCanvas = backCanvas;
+        this.storage = storage;
+        this.objects = this.storage.objects;
+        this.params = params;
+        this.options = options;
+
+        this.ctx = canvas.getContext('2d');
+        this.bgCtx = backCanvas.getContext('2d');
+    }
+
+    createClass(Painter, [{
+        key: 'renderAll',
+        value: function renderAll() {
+            var objs = this.objects;
+            var params = this.params;
+            var options = this.options;
+            var ctx = this.ctx;
+
+            //clear zone
+            clearCtx(ctx, { w: this.canvas.width, h: this.canvas.height });
+
+            for (var i = 0, il = objs.length; i < il; i++) {
+                switch (objs[i].type) {
+                    case GraphType.Rect:
+                        drawRect(ctx, objs[i]);
+                        break;
+                    case GraphType.Circle:
+                        drawCircle(ctx, objs[i]);
+                        break;
+                    case GraphType.Image:
+                        drawImage(ctx, objs[i]);
+                        break;
+                    default:
+                        console.error('not match type in render all');
+                        break;
+                }
+            }
+
+            //demo
+            ctx.setTransform(1, 0, 0, 1, params.x, params.y);
+            ctx.save();
+            ctx.fillStyle = "#f00";
+            ctx.fillRect(20, 20, 20, 20);
+            ctx.fillRect(20, 100, 20, 20);
+            ctx.fillRect(20, 200, 20, 20);
+            ctx.fillRect(20, 300, 20, 20);
+            ctx.fillRect(20, 500, 20, 20);
+            ctx.fillRect(20, 600, 20, 20);
+            ctx.restore();
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+            //draw scroll bar
+            // drawScrollBar(ctx, params, options);
+        }
+    }]);
+    return Painter;
+}();
+
+function clearCtx(ctx, opts) {
+    var x, y, w, h;
+    var opts = opts || {};
+    x = opts.x || 0;
+    y = opts.y || 0;
+    w = opts.w || 0;
+    h = opts.h || 0;
+    ctx.save();
+    ctx.clearRect(x, y, w, h);
+    ctx.restore();
+}
+
+function drawRect(ctx, obj) {
+    var x, y, w, h, color;
+    x = obj.x;
+    y = obj.y;
+    w = obj.width;
+    h = obj.height;
+    color = obj.fill;
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, w, h);
+    ctx.restore();
+}
+
+function drawCircle(ctx, obj) {
+    var x, y, radius, color;
+    var startAngle = Math.PI * 0;
+    var endAngle = Math.PI * 2;
+    var anticlockwise = false;
+
+    x = obj.x;
+    y = obj.y;
+    radius = obj.radius;
+    color = obj.fill;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.fillStyle = color;
+    ctx.arc(x, y, radius, startAngle, endAngle, anticlockwise);
+    ctx.fill();
+    ctx.closePath();
+    ctx.restore();
+}
+
+function drawImage(ctx, obj) {
+    var imgObj, x, y, w, h, dx, dy, dw, dh;
+    imgObj = obj.imgObj;
+    x = obj.x || 0;
+    y = obj.y || 0;
+    w = obj.w;
+    h = obj.h;
+    dx = obj.dx || 0;
+    dy = obj.dy || 0;
+    dw = obj.dw || 0;
+    dh = obj.dh || 0;
+    ctx.save();
+    if (dw && dh) {
+        ctx.drawImage(imgObj, x, y, w, h, dx, dy, dw, dh);
+    } else if (w && h) {
+        ctx.drawImage(imgObj, x, y, w, h);
+    } else {
+        ctx.drawImage(imgObj, x, y);
+    }
+    ctx.restore();
+}
+
+/**
+ * Created by lixiang on 2018/2/26.
+ */
+
+var Storage = function () {
+    function Storage() {
+        classCallCheck(this, Storage);
+
+        this.objects = [];
+    }
+
+    createClass(Storage, [{
+        key: "addObj",
+        value: function addObj(obj) {
+            this.objects.push(obj);
+        }
+    }, {
+        key: "findById",
+        value: function findById(id) {
+            var objs = this.objects;
+            for (var i = 0, il = objs.length; i < il; i++) {
+                if (objs[i].id === id) {
+                    return objs[i];
+                }
+            }
+        }
+    }, {
+        key: "deleteById",
+        value: function deleteById(id) {
+            var objs = this.objects;
+            for (var i = 0, il = objs.length; i < il; i++) {
+                if (objs[i].id === id) {
+                    objs.splice(i, 1);
+                    return;
+                }
+            }
+        }
+    }, {
+        key: "getAllObjects",
+        value: function getAllObjects() {
+            return this.objects;
+        }
+    }]);
+    return Storage;
+}();
+
+/**
+ * Created by lixiang on 2018/3/23.
+ */
+var DEFAULT_OPTIONS = {
+    width: 500,
+    height: 500,
+    contentWidth: 500,
+    contentHeight: 500,
+    backgroundColor: '',
+    backgroundImage: '',
+    scrollBar: false,
+    scrollBarFade: false,
+    disableTouch: true,
+    disableMouse: false,
+    preventDefault: true,
+    stopPropagation: true,
+    momentum: true,
+    momentumLimitTime: 300,
+    momentumLimitDistance: 15,
+    bounce: true, //是否开启弹跳效果，回弹效果
+    bounceTime: 800, //弹跳动画的持续时间，普遍采用800
+    swipeTime: 2500, //动量滚动持续时间
+    swipeBounceTime: 500 //动量滚动并遇上边界弹跳，持续时间
+};
+
+//scroll 的默认参数
+var DEFAULT_PARAMS = {
+    x: 0,
+    y: 0,
+    distX: 0, //鼠标按下后，移动的绝对距离
+    distY: 0,
+    pointX: 0, //鼠标按下的点，相对于page,并在移动时更新
+    pointY: 0,
+    startX: 0, //移动的开始位置
+    startY: 0,
+    scroll: false, //是否可以滚动，
+    scrollX: false, //是否可以沿X轴滚动
+    scrollY: false, //是否可以沿Y轴滚动
+    scrolling: false, //是否正在scroll中
+    maxScrollX: 0,
+    minScrollX: 0,
+    maxScrollY: 0,
+    minScrollY: 0,
+    overflowX: 0, //开启bounce时，超出的长度
+    overflowY: 0,
+    animateTimer: null, //动画的引用
+    isAnimating: false, //是否正在动画
+    startTime: 0,
+    endTime: 0
+};
+
+var Init = {
+    _handleOptions: function _handleOptions(opts) {
+        if (opts.contentWidth === undefined || opts.contentWidth < opts.width) {
+            opts.contentWidth = opts.width;
+        }
+
+        if (opts.contentHeight === undefined || opts.contentHeight < opts.height) {
+            opts.contentHeight = opts.height;
+        }
+
+        this.options = extend({}, DEFAULT_OPTIONS, opts);
+    },
+
+    _handleElements: function _handleElements(id) {
+        this._rootEle = document.getElementById(id);
+
+        this._wrapperEle = document.createElement("div");
+        this._canvasEle = document.createElement("canvas");
+        this._bgCanvasEle = document.createElement("canvas");
+
+        this._wrapperEle.style.position = "relative";
+        this._wrapperEle.style.margin = "auto";
+        this._wrapperEle.style.width = this.options.width + "px";
+        this._wrapperEle.style.height = this.options.height + "px";
+
+        this._canvasEle.style.position = "absolute";
+        this._canvasEle.width = this.options.width;
+        this._canvasEle.height = this.options.height;
+
+        this._bgCanvasEle.style.position = "absolute";
+        this._bgCanvasEle.width = this.options.width;
+        this._bgCanvasEle.height = this.options.height;
+
+        this._wrapperEle.appendChild(this._bgCanvasEle);
+        this._wrapperEle.appendChild(this._canvasEle);
+
+        this._rootEle.appendChild(this._wrapperEle);
+    },
+
+    _handleDomEvents: function _handleDomEvents() {
+        if (!this.options.disableMouse) {
+            this._canvasEle.addEventListener("mousedown", this, false);
+            this._canvasEle.addEventListener("mouseup", this, false);
+            this._canvasEle.addEventListener("mousemove", this, false);
+            this._canvasEle.addEventListener("mouseout", this, false);
+        }
+
+        if (!this.options.disableTouch) {
+            this._canvasEle.addEventListener("touchstart", this, false);
+            this._canvasEle.addEventListener("touchmove", this, false);
+            this._canvasEle.addEventListener("touchcancel", this, false);
+            this._canvasEle.addEventListener("touchend", this, false);
+        }
+    },
+
+    _handleCustomEvents: function _handleCustomEvents() {},
+
+    _handleInit: function _handleInit() {
+        this._params = extend({}, DEFAULT_PARAMS);
+        this._storage = new Storage();
+        this._painter = new Painter(this._canvasEle, this._bgCanvasEle, this._storage, this._params, this.options);
+
+        this._params.scrollX = this.options.contentWidth > this.options.width ? true : false;
+        this._params.scrollY = this.options.contentHeight > this.options.height ? true : false;
+        this._params.scroll = this._params.scrollX || this._params.scrollY;
+        this._params.minScrollX = this.options.width - this.options.contentWidth;
+        this._params.minScrollY = this.options.height - this.options.contentHeight;
+
+        var bgColor = this.options.backgroundColor;
+        var bgImage = this.options.backgroundImage;
+
+        if (!!bgColor && checkType(bgColor) === BaseType.String) {
+            this._bgCanvasEle.style.backgroundColor = bgColor;
+        }
+
+        if (!!bgImage && checkType(bgImage) === BaseType.String) {
+            this._bgCanvasEle.style.background = bgImage;
+        }
+
+        this._painter.renderAll();
     }
 };
 
@@ -872,309 +1192,329 @@ Object.assign(InertialAnimation.prototype, {
     }
 });
 
-/**
- * Created by lixiang on 2018/2/26.
- */
+//create by lixiang in 2018/3/28
 
-var Painter = function () {
-    function Painter(canvas, backCanvas, storage, params, options) {
-        classCallCheck(this, Painter);
+var Scroll = {
+    /**
+     * 开始滚动事件
+     * 鼠标按下，手指按下时触发
+     * @param e
+     * @private
+     */
+    _startScroll: function _startScroll(e) {
+        //不能scroll直接返回
+        var params = this._params;
+        var options = this.options;
 
-        this.canvas = canvas;
-        this.backCanvas = backCanvas;
-        this.storage = storage;
-        this.objects = this.storage.objects;
-        this.params = params;
-        this.options = options;
-
-        this.ctx = canvas.getContext('2d');
-        this.bgCtx = backCanvas.getContext('2d');
-    }
-
-    createClass(Painter, [{
-        key: 'renderAll',
-        value: function renderAll() {
-            var objs = this.objects;
-            var params = this.params;
-            var options = this.options;
-            var ctx = this.ctx;
-
-            //clear zone
-            clearCtx(ctx, { w: this.canvas.width, h: this.canvas.height });
-
-            for (var i = 0, il = objs.length; i < il; i++) {
-                switch (objs[i].type) {
-                    case GraphType.Rect:
-                        drawRect(ctx, objs[i]);
-                        break;
-                    case GraphType.Circle:
-                        drawCircle(ctx, objs[i]);
-                        break;
-                    case GraphType.Image:
-                        drawImage(ctx, objs[i]);
-                        break;
-                    default:
-                        console.error('not match type in render all');
-                        break;
-                }
-            }
-
-            //demo
-            ctx.setTransform(1, 0, 0, 1, params.x, params.y);
-            ctx.save();
-            ctx.fillStyle = "#f00";
-            ctx.fillRect(20, 20, 20, 20);
-            ctx.restore();
-            ctx.setTransform(1, 0, 0, 1, 0, 0);
-
-            //draw scroll bar
-            // drawScrollBar(ctx, params, options);
-        }
-    }]);
-    return Painter;
-}();
-
-function clearCtx(ctx, opts) {
-    var x, y, w, h;
-    var opts = opts || {};
-    x = opts.x || 0;
-    y = opts.y || 0;
-    w = opts.w || 0;
-    h = opts.h || 0;
-    ctx.save();
-    ctx.clearRect(x, y, w, h);
-    ctx.restore();
-}
-
-function drawRect(ctx, obj) {
-    var x, y, w, h, color;
-    x = obj.x;
-    y = obj.y;
-    w = obj.width;
-    h = obj.height;
-    color = obj.fill;
-    ctx.save();
-    ctx.fillStyle = color;
-    ctx.fillRect(x, y, w, h);
-    ctx.restore();
-}
-
-function drawCircle(ctx, obj) {
-    var x, y, radius, color;
-    var startAngle = Math.PI * 0;
-    var endAngle = Math.PI * 2;
-    var anticlockwise = false;
-
-    x = obj.x;
-    y = obj.y;
-    radius = obj.radius;
-    color = obj.fill;
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.fillStyle = color;
-    ctx.arc(x, y, radius, startAngle, endAngle, anticlockwise);
-    ctx.fill();
-    ctx.closePath();
-    ctx.restore();
-}
-
-function drawImage(ctx, obj) {
-    var imgObj, x, y, w, h, dx, dy, dw, dh;
-    imgObj = obj.imgObj;
-    x = obj.x || 0;
-    y = obj.y || 0;
-    w = obj.w;
-    h = obj.h;
-    dx = obj.dx || 0;
-    dy = obj.dy || 0;
-    dw = obj.dw || 0;
-    dh = obj.dh || 0;
-    ctx.save();
-    if (dw && dh) {
-        ctx.drawImage(imgObj, x, y, w, h, dx, dy, dw, dh);
-    } else if (w && h) {
-        ctx.drawImage(imgObj, x, y, w, h);
-    } else {
-        ctx.drawImage(imgObj, x, y);
-    }
-    ctx.restore();
-}
-
-/**
- * Created by lixiang on 2018/2/26.
- */
-
-var Storage = function () {
-    function Storage() {
-        classCallCheck(this, Storage);
-
-        this.objects = [];
-    }
-
-    createClass(Storage, [{
-        key: "addObj",
-        value: function addObj(obj) {
-            this.objects.push(obj);
-        }
-    }, {
-        key: "findById",
-        value: function findById(id) {
-            var objs = this.objects;
-            for (var i = 0, il = objs.length; i < il; i++) {
-                if (objs[i].id === id) {
-                    return objs[i];
-                }
-            }
-        }
-    }, {
-        key: "deleteById",
-        value: function deleteById(id) {
-            var objs = this.objects;
-            for (var i = 0, il = objs.length; i < il; i++) {
-                if (objs[i].id === id) {
-                    objs.splice(i, 1);
-                    return;
-                }
-            }
-        }
-    }, {
-        key: "getAllObjects",
-        value: function getAllObjects() {
-            return this.objects;
-        }
-    }]);
-    return Storage;
-}();
-
-/**
- * Created by lixiang on 2018/3/23.
- */
-var DEFAULT_OPTIONS = {
-    width: 500,
-    height: 500,
-    contentWidth: 500,
-    contentHeight: 500,
-    backgroundColor: '',
-    backgroundImage: '',
-    scrollBar: false,
-    scrollBarFade: false,
-    disableTouch: true,
-    disableMouse: false,
-    preventDefault: true,
-    stopPropagation: true,
-    momentumLimitTime: 300,
-    momentumLimitDistance: 15,
-    bounce: true, //是否开启弹跳效果
-    bounceTime: 800 //弹跳动画的持续时间，普遍采用800
-};
-
-//scroll 的默认参数
-var DEFAULT_PARAMS = {
-    x: 0,
-    y: 0,
-    distX: 0, //鼠标按下后，移动的绝对距离
-    distY: 0,
-    pointX: 0, //鼠标按下的点，相对于page,并在移动时更新
-    pointY: 0,
-    startX: 0, //移动的开始位置
-    startY: 0,
-    scroll: false, //是否可以滚动，
-    scrollX: false, //是否可以沿X轴滚动
-    scrollY: false, //是否可以沿Y轴滚动
-    scrolling: false, //是否正在scroll中
-    maxScrollX: 0,
-    minScrollX: 0,
-    maxScrollY: 0,
-    minScrollY: 0,
-    overflowX: 0, //开启bounce时，超出的长度
-    overflowY: 0,
-    animateTimer: null, //动画的引用
-    isAnimating: false, //是否正在动画
-    startTime: 0,
-    endTime: 0
-};
-
-var Init = {
-    _handleOptions: function _handleOptions(opts) {
-        if (opts.contentWidth === undefined || opts.contentWidth < opts.width) {
-            opts.contentWidth = opts.width;
+        if (!params.scroll) {
+            return;
         }
 
-        if (opts.contentHeight === undefined || opts.contentHeight < opts.height) {
-            opts.contentHeight = opts.height;
+        if (options.preventDefault) {
+            e.preventDefault();
         }
 
-        this.options = extend({}, DEFAULT_OPTIONS, opts);
+        if (options.stopPropagation) {
+            e.stopPropagation();
+        }
+
+        params.scrolling = true;
+
+        params.pointX = e.pageX;
+        params.pointY = e.pageY;
+
+        params.distX = 0;
+        params.distY = 0;
+
+        params.startX = params.x;
+        params.startY = params.y;
+
+        params.startTime = getNow();
+
+        this._stopScroll();
     },
 
-    _handleElements: function _handleElements(id) {
-        this._rootEle = document.getElementById(id);
+    /**
+     * 正在滚动事件
+     * 鼠标在画布上移动时触发
+     * @param e
+     * @private
+     */
+    _moveScroll: function _moveScroll(e) {
+        //不能scroll或者不处于scrolling，直接返回
+        var params = this._params;
+        var options = this.options;
+        var newX = void 0,
+            newY = void 0;
+        var timestamp = void 0;
 
-        this._wrapperEle = document.createElement("div");
-        this._canvasEle = document.createElement("canvas");
-        this._bgCanvasEle = document.createElement("canvas");
-
-        this._wrapperEle.style.position = "relative";
-        this._wrapperEle.style.margin = "auto";
-        this._wrapperEle.style.width = this.options.width + "px";
-        this._wrapperEle.style.height = this.options.height + "px";
-
-        this._canvasEle.style.position = "absolute";
-        this._canvasEle.width = this.options.width;
-        this._canvasEle.height = this.options.height;
-
-        this._bgCanvasEle.style.position = "absolute";
-        this._bgCanvasEle.width = this.options.width;
-        this._bgCanvasEle.height = this.options.height;
-
-        this._wrapperEle.appendChild(this._bgCanvasEle);
-        this._wrapperEle.appendChild(this._canvasEle);
-
-        this._rootEle.appendChild(this._wrapperEle);
-    },
-
-    _handleDomEvents: function _handleDomEvents() {
-        if (!this.options.disableMouse) {
-            this._canvasEle.addEventListener("mousedown", this, false);
-            this._canvasEle.addEventListener("mouseup", this, false);
-            this._canvasEle.addEventListener("mousemove", this, false);
-            this._canvasEle.addEventListener("mouseout", this, false);
+        if (!params.scroll || !params.scrolling) {
+            return;
         }
 
-        if (!this.options.disableTouch) {
-            this._canvasEle.addEventListener("touchstart", this, false);
-            this._canvasEle.addEventListener("touchmove", this, false);
-            this._canvasEle.addEventListener("touchcancel", this, false);
-            this._canvasEle.addEventListener("touchend", this, false);
+        if (options.preventDefault) {
+            e.preventDefault();
+        }
+
+        if (options.stopPropagation) {
+            e.stopPropagation();
+        }
+
+        timestamp = getNow();
+
+        params.distX += e.movementX;
+        params.distY += e.movementY;
+        params.pointX = e.pageX;
+        params.pointY = e.pageY;
+
+        newX = params.x + e.movementX;
+        newY = params.y + e.movementY;
+
+        if (!params.scrollX) {
+            newX = 0;
+        }
+        if (!params.scrollY) {
+            newY = 0;
+        }
+
+        //到达边缘，减速或停止移动
+        if (newX < params.minScrollX || newX > params.maxScrollX) {
+            if (options.bounce) {
+                params.overflowX += e.movementX;
+                newX = (newX < params.minScrollX ? params.minScrollX : params.maxScrollX) + rubberBanding(params.overflowX, options.width);
+            } else {
+                newX = newX < params.minScrollX ? params.minScrollX : params.maxScrollX;
+            }
+        }
+
+        if (newY < params.minScrollY || newY > params.maxScrollY) {
+            if (options.bounce) {
+                params.overflowY += e.movementY;
+                newY = (newY < params.minScrollY ? params.minScrollY : params.maxScrollY) + rubberBanding(params.overflowY, options.height);
+            } else {
+                newY = newY < params.minScrollY ? params.minScrollY : params.maxScrollY;
+            }
+        }
+
+        if (timestamp - params.startTime > options.momentumLimitTime) {
+            params.startTime = timestamp;
+            params.startX = params.x;
+            params.startY = params.y;
+        }
+
+        this._translate(newX, newY);
+    },
+
+    /**
+     * 结束滚动事件
+     * 鼠标抬起时触发
+     * @param e
+     * @private
+     */
+    _endScroll: function _endScroll(e) {
+        var params = this._params;
+        var options = this.options;
+
+        var newX = Math.round(params.x);
+        var newY = Math.round(params.y);
+        var time = void 0;
+        var easing = Ease.swipe;
+
+        //不能滚动或者不处于滚动中，直接返回
+        if (!params.scroll || !params.scrolling) {
+            return;
+        }
+        params.scrolling = false;
+
+        //如果超出边界，就重置位置，并且重置结束后直接返回，不用执行动量动画
+        if (this._resetPosition(options.bounceTime, Ease.spring)) {
+            console.log('超出边界');
+            return;
+        }
+
+        params.endTime = getNow();
+
+        var duration = params.endTime - params.startTime;
+        var absDistX = Math.abs(newX - params.startX);
+        var absDistY = Math.abs(newY - params.startY);
+
+        //开启动量动画，并且按住的持续之间小于300，并且移动距离大于15，认为是滚动状态，否则认为是静止状态，不需要开启动画
+        if (options.momentum && duration < options.momentumLimitTime && (absDistX > options.momentumLimitDistance || absDistY > options.momentumLimitDistance)) {
+            var momentumX = this._momentum(newX, params.startX, duration, params.minScrollX, params.maxScrollX);
+            var momentumY = this._momentum(newY, params.startY, duration, params.minScrollY, params.maxScrollY);
+            newX = momentumX.destination;
+            newY = momentumY.destination;
+            time = Math.max(momentumX.duration, momentumY.duration);
+        }
+
+        if (newX !== params.x || newY !== params.y) {
+            this._scrollTo(newX, newY, time, easing);
         }
     },
 
-    _handleCustomEvents: function _handleCustomEvents() {},
+    /**
+     * 使用bounce效果，将内容重新滚动回边界位置。
+     * 如果超出边界，返回true，并执行bounce动画
+     * 如果未超出边界，返回false，什么都不做
+     * @param time  动画持续时间
+     * @param easing 时间函数
+     * @returns {boolean}
+     * @private
+     */
+    _resetPosition: function _resetPosition() {
+        var time = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 0;
+        var easing = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : Ease.bounce;
 
-    _handleInit: function _handleInit() {
-        this._params = extend({}, DEFAULT_PARAMS);
-        this._storage = new Storage();
-        this._painter = new Painter(this._canvasEle, this._bgCanvasEle, this._storage, this._params, this.options);
+        var params = this._params;
+        var options = this.options;
+        var x = void 0,
+            y = void 0;
 
-        this._params.scrollX = this.options.contentWidth > this.options.width ? true : false;
-        this._params.scrollY = this.options.contentHeight > this.options.height ? true : false;
-        this._params.scroll = this._params.scrollX || this._params.scrollY;
-        this._params.minScrollX = this.options.width - this.options.contentWidth;
-        this._params.minScrollY = this.options.height - this.options.contentHeight;
+        x = Math.round(params.x);
+        y = Math.round(params.y);
 
-        var bgColor = this.options.backgroundColor;
-        var bgImage = this.options.backgroundImage;
-
-        if (!!bgColor && checkType(bgColor) === BaseType.String) {
-            this._bgCanvasEle.style.backgroundColor = bgColor;
+        if (x > params.maxScrollX) {
+            x = params.maxScrollX;
+        } else if (x < params.minScrollX) {
+            x = params.minScrollX;
         }
 
-        if (!!bgImage && checkType(bgImage) === BaseType.String) {
-            this._bgCanvasEle.style.background = bgImage;
+        if (y > params.maxScrollY) {
+            y = params.maxScrollY;
+        } else if (y < params.minScrollY) {
+            y = params.minScrollY;
         }
 
-        this._painter.renderAll();
+        if (x === params.x && y === params.y) {
+            return false;
+        }
+
+        //开启回弹动画
+        this._scrollTo(x, y, time, easing);
+        return true;
+    },
+
+    /**
+     * 将内容自动滚动到某处
+     * @param x
+     * @param y
+     * @param time
+     * @param easing
+     * @private
+     */
+    _scrollTo: function _scrollTo(x, y) {
+        var time = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0;
+        var easing = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : Ease.bounce;
+
+        //将内容移动到某处，使用动画效果,只能使用js动画
+        this._scrollAnimate(x, y, time, easing);
+    },
+
+    /**
+     * 开启某种动画
+     * @param destX
+     * @param destY
+     * @param duration
+     * @param easingFn
+     * @private
+     */
+    _scrollAnimate: function _scrollAnimate(destX, destY, duration, easingFn) {
+        var params = this._params;
+        var options = this.options;
+        var self = this;
+
+        if (easingFn === Ease.spring) {
+            params.isAnimating = true;
+            params.animateTimer = new SpringAnimation(params, ['x', 'y', 'overflowX', 'overflowY'], 0, 12, 180, {
+                x: params.x,
+                y: params.y,
+                overflowX: params.overflowX,
+                overflowY: params.overflowY
+            }, {
+                x: destX,
+                y: destY,
+                overflowX: 0,
+                overflowY: 0
+            }, duration);
+            params.animateTimer.onFrameCB = function () {
+                self._render();
+            };
+            params.animateTimer.didStopCB = function () {
+                params.isAnimating = false;
+                params.animateTimer = null;
+            };
+            params.animateTimer.start();
+        } else if (easingFn === Ease.swipe) {
+            params.isAnimating = true;
+            params.animateTimer = new Animation(params, ['x', 'y'], { x: params.x, y: params.y }, {
+                x: destX,
+                y: destY
+            }, duration, { timingFun: easingFn.fn });
+            params.animateTimer.onFrameCB = function () {
+                self._render();
+            };
+            params.animateTimer.didStopCB = function () {
+                params.isAnimating = false;
+                params.animateTimer = null;
+            };
+            params.animateTimer.start();
+        }
+    },
+
+    /**
+     * 停止滚动
+     * 一些参数重置，与回收
+     * @private
+     */
+    _stopScroll: function _stopScroll() {
+        var params = this._params;
+
+        params.animateTimer && params.animateTimer.stop();
+    },
+
+    /**
+     * 将内容变换到某处，随即自动渲染
+     * @param newX
+     * @param newY
+     * @private
+     */
+    _translate: function _translate(newX, newY) {
+        var params = this._params;
+        params.x = newX;
+        params.y = newY;
+
+        this._render();
+    },
+
+    /**
+     * 计算动量运动后的位置，设置动量动画的持续时间
+     * @param current  当前位置
+     * @param start    开始位置
+     * @param time     持续时间
+     * @param opts
+     */
+    _momentum: function _momentum(current, start, time, minScroll, maxScroll) {
+        var _options = this.options,
+            swipeBounceTime = _options.swipeBounceTime,
+            swipeTime = _options.swipeTime,
+            bounce = _options.bounce;
+
+        var distance = current - start;
+        var speed = distance * 1000 * 0.8 / time; //速度以秒为单位，并且衰减一点
+        var destination = current + speed;
+        var duration = swipeTime;
+
+        if (destination > maxScroll || destination < minScroll) {
+            if (bounce) {} else {
+                destination = destination > maxScroll ? maxScroll : minScroll;
+                duration = swipeBounceTime;
+            }
+        }
+
+        return {
+            destination: Math.round(destination),
+            duration: duration
+        };
     }
 };
 
@@ -1231,205 +1571,6 @@ var SXRender = function (_EventDispatcher) {
             }
         }
     }, {
-        key: '_startScroll',
-        value: function _startScroll(e) {
-            //不能scroll直接返回
-            var params = this._params;
-            var options = this.options;
-
-            if (!params.scroll) {
-                return;
-            }
-
-            if (options.preventDefault) {
-                e.preventDefault();
-            }
-
-            if (options.stopPropagation) {
-                e.stopPropagation();
-            }
-
-            params.scrolling = true;
-
-            params.pointX = e.pageX;
-            params.pointY = e.pageY;
-
-            params.distX = 0;
-            params.distY = 0;
-
-            params.startX = params.x;
-            params.startY = params.y;
-
-            params.startTime = getNow();
-
-            this._stopScroll();
-        }
-    }, {
-        key: '_moveScroll',
-        value: function _moveScroll(e) {
-            //不能scroll或者不处于scrolling，直接返回
-            var params = this._params;
-            var options = this.options;
-            var newX = void 0,
-                newY = void 0;
-            var timestamp = void 0;
-
-            if (!params.scroll || !params.scrolling) {
-                return;
-            }
-
-            if (options.preventDefault) {
-                e.preventDefault();
-            }
-
-            if (options.stopPropagation) {
-                e.stopPropagation();
-            }
-
-            timestamp = getNow();
-
-            params.distX += e.movementX;
-            params.distY += e.movementY;
-            params.pointX = e.pageX;
-            params.pointY = e.pageY;
-
-            newX = params.x + e.movementX;
-            newY = params.y + e.movementY;
-
-            if (!params.scrollX) {
-                newX = 0;
-            }
-            if (!params.scrollY) {
-                newY = 0;
-            }
-
-            //到达边缘，减速或停止移动
-            if (newX < params.minScrollX || newX > params.maxScrollX) {
-                if (options.bounce) {
-                    params.overflowX += e.movementX;
-                    newX = (newX < params.minScrollX ? params.minScrollX : params.maxScrollX) + rubberBanding(params.overflowX, options.width);
-                } else {
-                    newX = newX < params.minScrollX ? params.minScrollX : params.maxScrollX;
-                }
-            }
-
-            if (newY < params.minScrollY || newY > params.maxScrollY) {
-                if (options.bounce) {
-                    params.overflowY += e.movementY;
-                    newY = (newY < params.minScrollY ? params.minScrollY : params.maxScrollY) + rubberBanding(params.overflowY, options.height);
-                } else {
-                    newY = newY < params.minScrollY ? params.minScrollY : params.maxScrollY;
-                }
-            }
-
-            if (timestamp - params.startTime > options.momentumLimitTime) {
-                params.startTime = timestamp;
-                params.startX = this.x;
-                params.startY = this.y;
-            }
-
-            this._translate(newX, newY);
-        }
-    }, {
-        key: '_endScroll',
-        value: function _endScroll(e) {
-            var params = this._params;
-            var options = this.options;
-
-            //不能滚动，直接返回
-            if (!params.scroll) {
-                return;
-            }
-            params.scrolling = false;
-
-            //如果超出边界，就重置位置，并且重置结束后直接返回，不用执行动量动画
-            if (this._resetPosition(options.bounceTime, Ease.bounce)) {
-                return;
-            }
-        }
-    }, {
-        key: '_resetPosition',
-        value: function _resetPosition() {
-            var time = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 0;
-            var easing = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : Ease.bounce;
-
-            var params = this._params;
-            var options = this.options;
-            var x = void 0,
-                y = void 0;
-
-            x = Math.round(params.x);
-            y = Math.round(params.y);
-
-            if (x > params.maxScrollX) {
-                x = params.maxScrollX;
-            } else if (x < params.minScrollX) {
-                x = params.minScrollX;
-            }
-
-            if (y > params.maxScrollY) {
-                y = params.maxScrollY;
-            } else if (y < params.minScrollY) {
-                y = params.minScrollY;
-            }
-
-            if (x === params.x && y === params.y) {
-                return false;
-            }
-
-            //开启回弹动画
-            this._scrollTo(x, y, time, easing);
-            return true;
-        }
-    }, {
-        key: '_scrollTo',
-        value: function _scrollTo(x, y) {
-            var time = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0;
-            var easing = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : Ease.bounce;
-
-            //将内容移动到某处，使用动画效果,只能使用js动画
-            this._scrollAnimate(x, y, time, easing);
-        }
-    }, {
-        key: '_scrollAnimate',
-        value: function _scrollAnimate(destX, destY, duration, easingFn) {
-            var params = this._params;
-            var options = this.options;
-            var self = this;
-            params.isAnimating = true;
-            params.animateTimer = new SpringAnimation(params, ['x', 'y', 'overflowX', 'overflowY'], 0, 12, 180, {
-                x: params.x,
-                y: params.y,
-                overflowX: params.overflowX,
-                overflowY: params.overflowY
-            }, {
-                x: destX,
-                y: destY,
-                overflowX: 0,
-                overflowY: 0
-            }, duration);
-            params.animateTimer.onFrameCB = function () {
-                self._render();
-            };
-            params.animateTimer.start();
-        }
-    }, {
-        key: '_stopScroll',
-        value: function _stopScroll() {
-            var params = this._params;
-
-            params.animateTimer && params.animateTimer.stop();
-        }
-    }, {
-        key: '_translate',
-        value: function _translate(newX, newY) {
-            var params = this._params;
-            params.x = newX;
-            params.y = newY;
-
-            this._render();
-        }
-    }, {
         key: '_render',
         value: function _render() {
             this._painter.renderAll();
@@ -1439,6 +1580,7 @@ var SXRender = function (_EventDispatcher) {
 }(EventDispatcher);
 
 mixin(SXRender, Init, false);
+mixin(SXRender, Scroll, false);
 
 return SXRender;
 

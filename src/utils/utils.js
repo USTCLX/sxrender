@@ -83,7 +83,7 @@ const rubberBanding = function (x, d) {
     if (x > 0) {
         return (1 - (1 / ((x * c / d) + 1))) * d;
     } else {
-        return (1 - (1 / ((-x * c / d) + 1))) * d;
+        return -(1 - (1 / ((-x * c / d) + 1))) * d;
     }
 };
 
@@ -208,13 +208,23 @@ const Ease = {
         }
     },
     //easeOutQuart
+    //此曲线也可用于弹回效果，先快后慢
     bounce: {
         style: 'cubic-bezier(0.165, 0.84, 0.44, 1)',
         fn: function (t) {
             return 1 - (--t * t * t * t);
         }
+    },
+    spring:{
+        //弹簧效果，并没有具体实现，而是使用了SpringAnimation类来实现。此处用于判断
+        style:'spring',
+        fn:function(){
+
+        }
     }
 };
+
+
 
 const BaseType = {
     String: 'string',

@@ -3,7 +3,7 @@
  */
 import Painter from '../painter/painter';
 import Storage from '../storage/storage';
-import {BaseType,checkType,extend} from "../utils/utils"
+import {BaseType, checkType, extend} from "../utils/utils"
 
 
 const DEFAULT_OPTIONS = {
@@ -19,10 +19,13 @@ const DEFAULT_OPTIONS = {
     disableMouse: false,
     preventDefault: true,
     stopPropagation: true,
+    momentum:true,
     momentumLimitTime: 300,
     momentumLimitDistance: 15,
-    bounce: true,//是否开启弹跳效果
+    bounce: true,//是否开启弹跳效果，回弹效果
     bounceTime: 800,//弹跳动画的持续时间，普遍采用800
+    swipeTime: 2500, //动量滚动持续时间
+    swipeBounceTime: 500  //动量滚动并遇上边界弹跳，持续时间
 };
 
 //scroll 的默认参数
@@ -107,6 +110,7 @@ const Init = {
     },
 
     _handleCustomEvents: function () {
+
     },
 
     _handleInit: function () {
