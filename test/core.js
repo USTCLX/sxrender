@@ -810,9 +810,9 @@ function State(stateType, repeat, curFrame, curValue, reversing) {
 //插值
 function interpolateNumber(startValue, stopValue, progress, needReverse) {
     if (needReverse) {
-        return stopValue + progress * (startValue - stopValue);
+        return Math.round(stopValue + progress * (startValue - stopValue));
     } else {
-        return startValue + progress * (stopValue - startValue);
+        return Math.round(startValue + progress * (stopValue - startValue));
     }
 }
 
@@ -822,9 +822,9 @@ function interpolateObject(startObj, stopObj, progress, needReverse) {
     for (var key in obj) {
         if (obj.hasOwnProperty(key)) {
             if (needReverse) {
-                obj[key] = stopObj[key] + progress * (startObj[key] - stopObj[key]);
+                obj[key] = Math.round(stopObj[key] + progress * (startObj[key] - stopObj[key]));
             } else {
-                obj[key] = startObj[key] + progress * (stopObj[key] - startObj[key]);
+                obj[key] = Math.round(startObj[key] + progress * (stopObj[key] - startObj[key]));
             }
         }
     }
@@ -1328,7 +1328,6 @@ var Scroll = {
 
         //如果超出边界，就重置位置，并且重置结束后直接返回，不用执行动量动画
         if (this._resetPosition(options.bounceTime, Ease.spring)) {
-            console.log('超出边界');
             return;
         }
 
@@ -1366,12 +1365,11 @@ var Scroll = {
         var easing = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : Ease.bounce;
 
         var params = this._params;
-        var options = this.options;
         var x = void 0,
             y = void 0;
 
-        x = Math.round(params.x);
-        y = Math.round(params.y);
+        x = params.x;
+        y = params.y;
 
         if (x > params.maxScrollX) {
             x = params.maxScrollX;
@@ -1424,7 +1422,6 @@ var Scroll = {
         var self = this;
 
         if (easingFn === Ease.spring) {
-            params.isAnimating = true;
             params.animateTimer = new SpringAnimation(params, ['x', 'y', 'overflowX', 'overflowY'], 0, 12, 180, {
                 x: params.x,
                 y: params.y,
@@ -1436,6 +1433,9 @@ var Scroll = {
                 overflowX: 0,
                 overflowY: 0
             }, duration);
+            params.animateTimer.didStartCB = function () {
+                params.isAnimating = true;
+            };
             params.animateTimer.onFrameCB = function () {
                 self._render();
             };
@@ -1445,11 +1445,13 @@ var Scroll = {
             };
             params.animateTimer.start();
         } else if (easingFn === Ease.swipe) {
-            params.isAnimating = true;
             params.animateTimer = new Animation(params, ['x', 'y'], { x: params.x, y: params.y }, {
                 x: destX,
                 y: destY
             }, duration, { timingFun: easingFn.fn });
+            params.animateTimer.didStartCB = function () {
+                params.isAnimating = true;
+            };
             params.animateTimer.onFrameCB = function () {
                 self._render();
             };

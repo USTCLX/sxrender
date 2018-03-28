@@ -136,7 +136,6 @@ const Scroll = {
 
         //如果超出边界，就重置位置，并且重置结束后直接返回，不用执行动量动画
         if (this._resetPosition(options.bounceTime, Ease.spring)) {
-            console.log('超出边界');
             return;
         }
 
@@ -175,11 +174,10 @@ const Scroll = {
      */
     _resetPosition: function (time = 0, easing = Ease.bounce) {
         let params = this._params;
-        let options = this.options;
         let x, y;
 
-        x = Math.round(params.x);
-        y = Math.round(params.y);
+        x = params.x;
+        y = params.y;
 
         if (x > params.maxScrollX) {
             x = params.maxScrollX;
@@ -229,7 +227,6 @@ const Scroll = {
         let self = this;
 
         if (easingFn === Ease.spring) {
-            params.isAnimating = true;
             params.animateTimer = new SpringAnimation(params, ['x', 'y', 'overflowX', 'overflowY'], 0, 12, 180, {
                 x: params.x,
                 y: params.y,
@@ -241,6 +238,9 @@ const Scroll = {
                 overflowX: 0,
                 overflowY: 0
             }, duration);
+            params.animateTimer.didStartCB = function(){
+                params.isAnimating = true;
+            };
             params.animateTimer.onFrameCB = function () {
                 self._render();
             };
@@ -251,11 +251,13 @@ const Scroll = {
             params.animateTimer.start();
 
         } else if (easingFn === Ease.swipe) {
-            params.isAnimating = true;
             params.animateTimer = new Animation(params, ['x', 'y'], {x: params.x, y: params.y}, {
                 x: destX,
                 y: destY
             }, duration, {timingFun: easingFn.fn});
+            params.animateTimer.didStartCB = function(){
+                params.isAnimating = true;
+            };
             params.animateTimer.onFrameCB = function () {
                 self._render();
             };
