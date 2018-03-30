@@ -807,30 +807,6 @@ function State(stateType, repeat, curFrame, curValue, reversing) {
     this.reversing = reversing || false;
 }
 
-//插值
-function interpolateNumber(startValue, stopValue, progress, needReverse) {
-    if (needReverse) {
-        return Math.round(stopValue + progress * (startValue - stopValue));
-    } else {
-        return Math.round(startValue + progress * (stopValue - startValue));
-    }
-}
-
-//对象插值
-function interpolateObject(startObj, stopObj, progress, needReverse) {
-    var obj = Object.assign({}, startObj);
-    for (var key in obj) {
-        if (obj.hasOwnProperty(key)) {
-            if (needReverse) {
-                obj[key] = Math.round(stopObj[key] + progress * (startObj[key] - stopObj[key]));
-            } else {
-                obj[key] = Math.round(startObj[key] + progress * (stopObj[key] - startObj[key]));
-            }
-        }
-    }
-    return obj;
-}
-
 /**
  * Created by lixiang on 2018/1/8.
  */
@@ -878,7 +854,7 @@ var coreAnimateHandler = function coreAnimateHandler() {
 
     this._p = this.timingFun(this.state.curFrame / this._totalFrames);
 
-    this.state.curValue = this._valueType !== valueTypes.object ? interpolateNumber(this.startValue, this.stopValue, this._p, this.state.resveringeState) : interpolateObject(this.startValue, this.stopValue, this._p, this.state.resveringeState);
+    this.state.curValue = this._interpolateValue(this.startValue, this.stopValue, this._p);
 
     if (this.target && this.key) {
         this._changeTargetValue();
@@ -984,6 +960,29 @@ Animation.prototype = {
                 }
             });
         }
+    },
+    _interpolateValue: function _interpolateValue(startValue, stopValue, factor) {
+        var type = checkType(startValue);
+        var self = this;
+        switch (type) {
+            case BaseType.Array:
+                return startValue.map(function (sv, i) {
+                    return self._interpolateValue(sv, stopValue[i], factor);
+                });
+            case BaseType.Object:
+                var obj = {};
+                for (var key in startValue) {
+                    if (startValue.hasOwnProperty(key)) {
+                        obj[key] = this._interpolateValue(startValue[key], stopValue[key], factor);
+                    }
+                }
+                return obj;
+            case BaseType.Number:
+                return startValue + factor * (stopValue - startValue);
+            default:
+                console.error('not match type in interpolate value');
+                break;
+        }
     }
 };
 
@@ -994,6 +993,7 @@ Animation.prototype = {
  * @param  {num} initialVelocity 初始速度
  * @param  {num} startX          初始位置
  * @return {fun}                 p关于t的函数
+ *
  */
 var calTimingFunctionBySpring = function calTimingFunctionBySpring(damping, stiffness, initialVelocity, startX) {
     var c = damping;
@@ -1059,12 +1059,7 @@ var springAnimateHandler = function springAnimateHandler() {
     }
     this._p = this.timingFun(this.state.curFrame / this._totalFrames);
 
-    if (this.startX === 0) {
-        this.state.curValue = this._valueType !== valueTypes.object ? interpolateNumber(this.startValue, this.stopValue, this._p) : interpolateObject(this.startValue, this.stopValue, this._p);
-    } else if (this.startX === 1) {
-        //在平衡位置，以一个初速度开始弹跳
-        this.state.curValue = this._p - 1;
-    }
+    this.state.curValue = this._interpolateValue(this.startValue, this.stopValue, this._p);
 
     if (this.target && this.key) {
         this._changeTargetValue();
@@ -1423,7 +1418,8 @@ var Scroll = {
 
         if (easingFn === Ease.spring) {
             var v = opts && opts.v || 0;
-            var start = opts && opts.start || 0;
+            console.log(params.overflowY, options.height, params.overflowY / options.height);
+            var start = opts && opts.start || params.overflowY / options.height;
             params.animateTimer = new SpringAnimation(params, ['x', 'y', 'overflowX', 'overflowY'], v, 12, 180, {
                 x: params.x,
                 y: params.y,
@@ -1434,7 +1430,7 @@ var Scroll = {
                 y: destY,
                 overflowX: 0,
                 overflowY: 0
-            }, duration, start);
+            }, duration, 0);
             params.animateTimer.didStartCB = function () {
                 params.isAnimating = true;
             };
@@ -1456,6 +1452,33 @@ var Scroll = {
             };
             params.animateTimer.onFrameCB = function () {
                 self._render();
+                //计算是否触碰边界
+                var _state$curValue = this.state.curValue,
+                    x = _state$curValue.x,
+                    y = _state$curValue.y;
+                var maxScrollX = params.maxScrollX,
+                    minScrollX = params.minScrollX,
+                    maxScrollY = params.maxScrollY,
+                    minScrollY = params.minScrollY;
+
+                var vx = 0,
+                    vy = 0;
+                if (x > maxScrollX || x < minScrollX) {
+                    var lx = this.lastState.curValue.x;
+                    vx = (x - lx) / (getNow() - this._lastTimeStamp) * 1000;
+                }
+                if (y > maxScrollY || y < minScrollY) {
+                    var ly = this.lastState.curValue.y;
+                    vy = (y - ly) / (getNow() - this._lastTimeStamp) * 1000;
+                }
+                if (!!vx || !!vy) {
+                    //over boundary
+                    var _v = vy;
+
+                    this.stop(); //停止当前动画
+
+                    self._scrollAnimate(0, 0, 2000, Ease.spring, { v: _v, start: 1 });
+                }
             };
             params.animateTimer.didStopCB = function () {
                 params.isAnimating = false;

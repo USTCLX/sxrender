@@ -404,6 +404,7 @@ function mouseUpHandler(e){
                             this.stop();
                             //需要开启spring弹簧动画,只有在单方向是开启
                             if(Math.abs(vy)>50){
+                                console.log('vy',vy);
                                 self._animation = new SpringAnimation(null,'',vy,20,180,0,0,2000,1);
                                 self._animation.onFrameCB = function(){
                                     self.springOffset.y = this.state.curValue;

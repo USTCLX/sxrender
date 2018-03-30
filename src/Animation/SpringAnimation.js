@@ -9,6 +9,7 @@ import requestAnimationFrame from './requestAnimationFrame';
  * @param  {num} initialVelocity 初始速度
  * @param  {num} startX          初始位置
  * @return {fun}                 p关于t的函数
+ *
  */
 const calTimingFunctionBySpring = function(damping,stiffness,initialVelocity,startX) {
     var c = damping;
@@ -76,12 +77,9 @@ const springAnimateHandler = function(){
     }
     this._p = this.timingFun(this.state.curFrame/this._totalFrames);
 
-    if(this.startX===0){
-        this.state.curValue = (this._valueType!==valueTypes.object)?interpolateNumber(this.startValue,this.stopValue,this._p):interpolateObject(this.startValue,this.stopValue,this._p);
-    }else if(this.startX===1){
-        //在平衡位置，以一个初速度开始弹跳
-        this.state.curValue = this._p-1;
-    }
+
+    this.state.curValue = this._interpolateValue(this.startValue,this.stopValue,this._p);
+
 
     if(this.target&&this.key){
         this._changeTargetValue();

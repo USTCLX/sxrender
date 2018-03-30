@@ -228,7 +228,8 @@ const Scroll = {
 
         if (easingFn === Ease.spring) {
             let v = (opts && opts.v) || 0;
-            let start = (opts && opts.start) || 0;
+            console.log(params.overflowY,options.height,params.overflowY / options.height);
+            let start = (opts && opts.start) || (params.overflowY / options.height);
             params.animateTimer = new SpringAnimation(params, ['x', 'y', 'overflowX', 'overflowY'], v, 12, 180, {
                 x: params.x,
                 y: params.y,
@@ -239,7 +240,7 @@ const Scroll = {
                 y: destY,
                 overflowX: 0,
                 overflowY: 0
-            }, duration, start);
+            }, duration, 0);
             params.animateTimer.didStartCB = function () {
                 params.isAnimating = true;
             };
@@ -262,6 +263,28 @@ const Scroll = {
             };
             params.animateTimer.onFrameCB = function () {
                 self._render();
+                //计算是否触碰边界
+                let {x, y} = this.state.curValue;
+                let {maxScrollX, minScrollX, maxScrollY, minScrollY} = params;
+                let vx = 0, vy = 0;
+                if (x > maxScrollX || x < minScrollX) {
+                    let lx = this.lastState.curValue.x;
+                    vx = (x - lx) / (getNow() - this._lastTimeStamp) * 1000;
+                }
+                if (y > maxScrollY || y < minScrollY) {
+                    let ly = this.lastState.curValue.y;
+                    vy = (y - ly) / (getNow() - this._lastTimeStamp) * 1000;
+                }
+                if (!!vx || !!vy) {
+                    //over boundary
+                    let absVX = Math.abs(vx);
+                    let absVY = Math.abs(vy);
+                    let v = vy;
+
+                    this.stop(); //停止当前动画
+
+                    self._scrollAnimate(0, 0, 2000, Ease.spring, {v: v, start: 1})
+                }
 
             };
             params.animateTimer.didStopCB = function () {
