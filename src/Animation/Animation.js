@@ -184,7 +184,7 @@ Animation.prototype = {
                 }
                 return obj;
             case BaseType.Number:
-                return startValue + factor * (stopValue - startValue);
+                return Math.round(startValue + factor * (stopValue - startValue));
             default:
                 console.error('not match type in interpolate value');
                 break;
