@@ -1004,7 +1004,7 @@ var calTimingFunctionBySpring = function calTimingFunctionBySpring(damping, stif
     var alpha, beta;
     var f0;
     var fp0;
-    f0 = (startX || 0) - 1;
+    f0 = startX;
     fp0 = v;
     var C1, C2;
     if (t > 0) {
@@ -1039,16 +1039,35 @@ var calTimingFunctionBySpring = function calTimingFunctionBySpring(damping, stif
 
 /**
  * initialVelocity 初始速度
- * damping 阻尼系数,一般为12
- * stiffness 弹力系数,一般为180
+ * damping 阻尼系数,一般为12 系统中采用26
+ * stiffness 弹力系数,一般为180 系统中采用170
  * duration 弹跳动画持续时间，一般为2000ms
  */
-var SpringAnimation = function SpringAnimation(target, key, initialVelocity, damping, stiffness, startValue, stopValue, duration, startX) {
+var SpringAnimation = function SpringAnimation(target, key, initialVelocity, damping, stiffness, startValue, stopValue, duration, opts) {
     Animation.apply(this, [target, key, startValue, stopValue, duration]);
     this.initialVelocity = initialVelocity || 0;
-    this.damping = damping || 12;
-    this.stiffness = stiffness || 180;
-    this.startX = startX || 0;
+    this.damping = opts && opts.damping || 26;
+    this.stiffness = opts && opts.stiffness || 170;
+    this.startX = -1; //初始化为-1  平衡位置为0
+    this.bounceLimit = opts && opts.bounceLimit || 100;
+
+    //预处理
+    if (startValue instanceof Object && stopValue instanceof Object) {
+        this.startX = {};
+        this.timingFun = {};
+        for (var _key in stopValue) {
+            if (startValue.hasOwnProperty(_key) && stopValue.hasOwnProperty(_key)) {
+                this.startX[_key] = (stopValue[_key] - startValue[_key]) / this.bounceLimit;
+                this.timingFun[_key] = calTimingFunctionBySpring(this.damping, this.stiffness, this.initialVelocity, this.startX[_key]);
+            }
+        }
+    } else if (startValue instanceof Number && stopValue instanceof Number) {
+        this.startX = (stopValue - startValue) / this.bounceLimit;
+        this.timingFun[key] = calTimingFunctionBySpring(this.damping, this.stiffness, this.initialVelocity, this.startX);
+    } else {
+        //类型不支持
+        throw new Error('type err in SpringAnimation!');
+    }
 };
 //继承Animation
 SpringAnimation.prototype = Object.create(Animation.prototype);
@@ -1057,15 +1076,25 @@ var springAnimateHandler = function springAnimateHandler() {
     if (this.state.stateType !== stateTypes.running) {
         return;
     }
-    this._p = this.timingFun(this.state.curFrame / this._totalFrames);
 
-    this.state.curValue = this._interpolateValue(this.startValue, this.stopValue, this._p);
+    if (this.state.curValue instanceof Object) {
+        for (var key in this.state.curValue) {
+            if (this.state.curValue.hasOwnProperty(key)) {
+                this._p = this.timingFun[key](this.state.curFrame / this._totalFrames);
+                this.state.curValue[key] = this._interpolateValue(this.bounceLimit, 0, this._p) + this.stopValue[key];
+            }
+        }
+    } else if (this.state.curValue instanceof Number) {
+        this._p = this.timingFun(this.state.curFrame / this._totalFrames);
+        this.state.curValue = this._interpolateValue(this.startValue, this.stopValue, this._p);
+    }
 
     if (this.target && this.key) {
         this._changeTargetValue();
     }
 
     this.onFrameCB && this.onFrameCB();
+
     if (this.state.curFrame < this._totalFrames) {
         requestAnimationFrame(springAnimateHandler.bind(this), this._timeStep);
     } else {
@@ -1083,7 +1112,6 @@ Object.assign(SpringAnimation.prototype, {
             return;
         }
         this.state.stateType = stateTypes.running;
-        this.timingFun = calTimingFunctionBySpring(this.damping, this.stiffness, this.initialVelocity, this.startX);
         setTimeout(function () {
             this.didStartCB && this.didStartCB();
             this._timeStamp = Date.now();
@@ -1418,9 +1446,7 @@ var Scroll = {
 
         if (easingFn === Ease.spring) {
             var v = opts && opts.v || 0;
-            console.log(params.overflowY, options.height, params.overflowY / options.height);
-            var start = opts && opts.start || params.overflowY / options.height;
-            params.animateTimer = new SpringAnimation(params, ['x', 'y', 'overflowX', 'overflowY'], v, 12, 180, {
+            params.animateTimer = new SpringAnimation(params, ['x', 'y', 'overflowX', 'overflowY'], v, 26, 170, {
                 x: params.x,
                 y: params.y,
                 overflowX: params.overflowX,
@@ -1430,7 +1456,7 @@ var Scroll = {
                 y: destY,
                 overflowX: 0,
                 overflowY: 0
-            }, duration, 0);
+            }, duration);
             params.animateTimer.didStartCB = function () {
                 params.isAnimating = true;
             };
@@ -1463,12 +1489,14 @@ var Scroll = {
 
                 var vx = 0,
                     vy = 0;
+                console.log('laststate', this.lastState.curValue.y);
                 if (x > maxScrollX || x < minScrollX) {
                     var lx = this.lastState.curValue.x;
                     vx = (x - lx) / (getNow() - this._lastTimeStamp) * 1000;
                 }
                 if (y > maxScrollY || y < minScrollY) {
                     var ly = this.lastState.curValue.y;
+                    console.log(y - ly, getNow() - this._lastTimeStamp);
                     vy = (y - ly) / (getNow() - this._lastTimeStamp) * 1000;
                 }
                 if (!!vx || !!vy) {
@@ -1476,8 +1504,10 @@ var Scroll = {
                     var _v = vy;
 
                     this.stop(); //停止当前动画
-
-                    self._scrollAnimate(0, 0, 2000, Ease.spring, { v: _v, start: 1 });
+                    var _destX = x > minScrollX ? minScrollX : maxScrollX;
+                    var _destY = y > minScrollY ? minScrollY : maxScrollY;
+                    console.log('destX', _destX, _destY, vy);
+                    self._scrollAnimate(_destX, _destY, options.bounceTime, Ease.spring, { v: _v });
                 }
             };
             params.animateTimer.didStopCB = function () {

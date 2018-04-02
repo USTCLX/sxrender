@@ -7,7 +7,7 @@ window.onload = function(){
         width:200,
         height:500,
         contentWidth:200,
-        contentHeight:1800,
+        contentHeight:800,
         backgroundColor:"#fff"
     });
 

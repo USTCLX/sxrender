@@ -228,9 +228,7 @@ const Scroll = {
 
         if (easingFn === Ease.spring) {
             let v = (opts && opts.v) || 0;
-            console.log(params.overflowY,options.height,params.overflowY / options.height);
-            let start = (opts && opts.start) || (params.overflowY / options.height);
-            params.animateTimer = new SpringAnimation(params, ['x', 'y', 'overflowX', 'overflowY'], v, 12, 180, {
+            params.animateTimer = new SpringAnimation(params, ['x', 'y', 'overflowX', 'overflowY'], v, 26, 170, {
                 x: params.x,
                 y: params.y,
                 overflowX: params.overflowX,
@@ -240,12 +238,13 @@ const Scroll = {
                 y: destY,
                 overflowX: 0,
                 overflowY: 0
-            }, duration, 0);
+            }, duration);
             params.animateTimer.didStartCB = function () {
                 params.isAnimating = true;
             };
             params.animateTimer.onFrameCB = function () {
                 self._render();
+
             };
             params.animateTimer.didStopCB = function () {
                 params.isAnimating = false;
@@ -267,12 +266,14 @@ const Scroll = {
                 let {x, y} = this.state.curValue;
                 let {maxScrollX, minScrollX, maxScrollY, minScrollY} = params;
                 let vx = 0, vy = 0;
+                console.log('laststate',this.lastState.curValue.y);
                 if (x > maxScrollX || x < minScrollX) {
                     let lx = this.lastState.curValue.x;
                     vx = (x - lx) / (getNow() - this._lastTimeStamp) * 1000;
                 }
                 if (y > maxScrollY || y < minScrollY) {
                     let ly = this.lastState.curValue.y;
+                    console.log(y - ly,getNow() - this._lastTimeStamp);
                     vy = (y - ly) / (getNow() - this._lastTimeStamp) * 1000;
                 }
                 if (!!vx || !!vy) {
@@ -282,8 +283,10 @@ const Scroll = {
                     let v = vy;
 
                     this.stop(); //停止当前动画
-
-                    self._scrollAnimate(0, 0, 2000, Ease.spring, {v: v, start: 1})
+                    let destX = x > minScrollX ? minScrollX : maxScrollX;
+                    let destY = y > minScrollY ? minScrollY : maxScrollY;
+                    console.log('destX',destX,destY,vy);
+                    self._scrollAnimate(destX, destY, options.bounceTime, Ease.spring, {v: v})
                 }
 
             };
