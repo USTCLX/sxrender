@@ -228,7 +228,7 @@ const Scroll = {
 
         if (easingFn === Ease.spring) {
             let v = (opts && opts.v) || 0;
-            params.animateTimer = new SpringAnimation(params, ['x', 'y', 'overflowX', 'overflowY'], v, 26, 170, {
+            params.animateTimer = new SpringAnimation(params, ['y', 'overflowY'], v, 26, 170, {
                 x: params.x,
                 y: params.y,
                 overflowX: params.overflowX,
@@ -244,7 +244,6 @@ const Scroll = {
             };
             params.animateTimer.onFrameCB = function () {
                 self._render();
-
             };
             params.animateTimer.didStopCB = function () {
                 params.isAnimating = false;
@@ -266,27 +265,23 @@ const Scroll = {
                 let {x, y} = this.state.curValue;
                 let {maxScrollX, minScrollX, maxScrollY, minScrollY} = params;
                 let vx = 0, vy = 0;
-                console.log('laststate',this.lastState.curValue.y);
                 if (x > maxScrollX || x < minScrollX) {
                     let lx = this.lastState.curValue.x;
-                    vx = (x - lx) / (getNow() - this._lastTimeStamp) * 1000;
+                    vx = (x - lx) / (getNow() - this._lastTimeStamp)*1000/100;
                 }
                 if (y > maxScrollY || y < minScrollY) {
                     let ly = this.lastState.curValue.y;
-                    console.log(y - ly,getNow() - this._lastTimeStamp);
-                    vy = (y - ly) / (getNow() - this._lastTimeStamp) * 1000;
+                    vy = (y - ly) / (getNow() - this._lastTimeStamp)*1000/100;
                 }
                 if (!!vx || !!vy) {
                     //over boundary
                     let absVX = Math.abs(vx);
                     let absVY = Math.abs(vy);
-                    let v = vy;
-
+                    let v = absVX>absVX?vx:vy;
                     this.stop(); //停止当前动画
-                    let destX = x > minScrollX ? minScrollX : maxScrollX;
-                    let destY = y > minScrollY ? minScrollY : maxScrollY;
-                    console.log('destX',destX,destY,vy);
-                    self._scrollAnimate(destX, destY, options.bounceTime, Ease.spring, {v: v})
+                    let destX = x < minScrollX ? minScrollX : maxScrollX;
+                    let destY = y < minScrollY ? minScrollY : maxScrollY;
+                    self._scrollAnimate(destX, destY, options.bounceTime, Ease.spring, {v: -v})
                 }
 
             };

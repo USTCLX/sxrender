@@ -1,6 +1,7 @@
 import Animation from './Animation';
 import {stateTypes} from "./common";
 import requestAnimationFrame from './requestAnimationFrame';
+import {BaseType,checkType,deepClone} from "../utils/utils"
 
 /**
  * 根据阻尼系数，弹力系数，初始速度，初始位置信息，计算出进度p关于时间t的函数
@@ -68,6 +69,11 @@ let SpringAnimation = function (target, key, initialVelocity, damping, stiffness
     this.startX = -1;//初始化为-1  平衡位置为0
     this.bounceLimit = opts && opts.bounceLimit || 100;
 
+    if(checkType(startValue)!==checkType(stopValue)){
+        throw new Error('start and stop must have same type!');
+        return;
+    }
+
     //预处理
     if ((startValue instanceof Object) && (stopValue instanceof Object)) {
         this.startX = {};
@@ -97,16 +103,29 @@ const springAnimateHandler = function () {
         return;
     }
 
+    let start = this.bounceLimit;
+    let stop = 0;
+
     if (this.state.curValue instanceof Object) {
         for (let key in this.state.curValue) {
             if (this.state.curValue.hasOwnProperty(key)) {
-                this._p = this.timingFun[key](this.state.curFrame / this._totalFrames);
-                this.state.curValue[key] = this._interpolateValue(this.bounceLimit, 0, this._p) + this.stopValue[key];
+                if (this.startValue[key] === this.stopValue[key]) {
+                    this.state.curValue[key] = this.stopValue[key];
+                } else {
+                    this._p = this.timingFun[key](this.state.curFrame / this._totalFrames);
+                    this.state.curValue[key] = this._interpolateValue(this.bounceLimit, 0, this._p) + this.stopValue[key];
+                }
+
             }
         }
     } else if (this.state.curValue instanceof Number) {
-        this._p = this.timingFun(this.state.curFrame / this._totalFrames);
-        this.state.curValue = this._interpolateValue(this.startValue, this.stopValue, this._p);
+        if(this.startValue === this.stopValue){
+            this.state.curValue = this.stopValue;
+        }else{
+            this._p = this.timingFun(this.state.curFrame / this._totalFrames);
+            this.state.curValue = this._interpolateValue(start, stop, this._p) + this.stopValue;
+        }
+
     }
 
 
@@ -115,6 +134,9 @@ const springAnimateHandler = function () {
     }
 
     this.onFrameCB && this.onFrameCB();
+
+    this.lastState = deepClone(this.state);
+    this._lastTimeStamp = Date.now();
 
     if (this.state.curFrame < this._totalFrames) {
         requestAnimationFrame(springAnimateHandler.bind(this), this._timeStep);

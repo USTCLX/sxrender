@@ -576,7 +576,7 @@ var DEFAULT_OPTIONS = {
     contentHeight: 500,
     backgroundColor: '',
     backgroundImage: '',
-    scrollBar: false,
+    scrollBar: true,
     scrollBarFade: false,
     disableTouch: true,
     disableMouse: false,
@@ -1051,6 +1051,11 @@ var SpringAnimation = function SpringAnimation(target, key, initialVelocity, dam
     this.startX = -1; //初始化为-1  平衡位置为0
     this.bounceLimit = opts && opts.bounceLimit || 100;
 
+    if (checkType(startValue) !== checkType(stopValue)) {
+        throw new Error('start and stop must have same type!');
+        return;
+    }
+
     //预处理
     if (startValue instanceof Object && stopValue instanceof Object) {
         this.startX = {};
@@ -1077,16 +1082,27 @@ var springAnimateHandler = function springAnimateHandler() {
         return;
     }
 
+    var start = this.bounceLimit;
+    var stop = 0;
+
     if (this.state.curValue instanceof Object) {
         for (var key in this.state.curValue) {
             if (this.state.curValue.hasOwnProperty(key)) {
-                this._p = this.timingFun[key](this.state.curFrame / this._totalFrames);
-                this.state.curValue[key] = this._interpolateValue(this.bounceLimit, 0, this._p) + this.stopValue[key];
+                if (this.startValue[key] === this.stopValue[key]) {
+                    this.state.curValue[key] = this.stopValue[key];
+                } else {
+                    this._p = this.timingFun[key](this.state.curFrame / this._totalFrames);
+                    this.state.curValue[key] = this._interpolateValue(this.bounceLimit, 0, this._p) + this.stopValue[key];
+                }
             }
         }
     } else if (this.state.curValue instanceof Number) {
-        this._p = this.timingFun(this.state.curFrame / this._totalFrames);
-        this.state.curValue = this._interpolateValue(this.startValue, this.stopValue, this._p);
+        if (this.startValue === this.stopValue) {
+            this.state.curValue = this.stopValue;
+        } else {
+            this._p = this.timingFun(this.state.curFrame / this._totalFrames);
+            this.state.curValue = this._interpolateValue(start, stop, this._p) + this.stopValue;
+        }
     }
 
     if (this.target && this.key) {
@@ -1094,6 +1110,9 @@ var springAnimateHandler = function springAnimateHandler() {
     }
 
     this.onFrameCB && this.onFrameCB();
+
+    this.lastState = deepClone(this.state);
+    this._lastTimeStamp = Date.now();
 
     if (this.state.curFrame < this._totalFrames) {
         requestAnimationFrame(springAnimateHandler.bind(this), this._timeStep);
@@ -1446,7 +1465,7 @@ var Scroll = {
 
         if (easingFn === Ease.spring) {
             var v = opts && opts.v || 0;
-            params.animateTimer = new SpringAnimation(params, ['x', 'y', 'overflowX', 'overflowY'], v, 26, 170, {
+            params.animateTimer = new SpringAnimation(params, ['y', 'overflowY'], v, 26, 170, {
                 x: params.x,
                 y: params.y,
                 overflowX: params.overflowX,
@@ -1489,25 +1508,22 @@ var Scroll = {
 
                 var vx = 0,
                     vy = 0;
-                console.log('laststate', this.lastState.curValue.y);
                 if (x > maxScrollX || x < minScrollX) {
                     var lx = this.lastState.curValue.x;
-                    vx = (x - lx) / (getNow() - this._lastTimeStamp) * 1000;
+                    vx = (x - lx) / (getNow() - this._lastTimeStamp) * 1000 / 100;
                 }
                 if (y > maxScrollY || y < minScrollY) {
                     var ly = this.lastState.curValue.y;
-                    console.log(y - ly, getNow() - this._lastTimeStamp);
-                    vy = (y - ly) / (getNow() - this._lastTimeStamp) * 1000;
+                    vy = (y - ly) / (getNow() - this._lastTimeStamp) * 1000 / 100;
                 }
                 if (!!vx || !!vy) {
                     //over boundary
-                    var _v = vy;
-
+                    var absVX = Math.abs(vx);
+                    var _v = absVX > absVX ? vx : vy;
                     this.stop(); //停止当前动画
-                    var _destX = x > minScrollX ? minScrollX : maxScrollX;
-                    var _destY = y > minScrollY ? minScrollY : maxScrollY;
-                    console.log('destX', _destX, _destY, vy);
-                    self._scrollAnimate(_destX, _destY, options.bounceTime, Ease.spring, { v: _v });
+                    var _destX = x < minScrollX ? minScrollX : maxScrollX;
+                    var _destY = y < minScrollY ? minScrollY : maxScrollY;
+                    self._scrollAnimate(_destX, _destY, options.bounceTime, Ease.spring, { v: -_v });
                 }
             };
             params.animateTimer.didStopCB = function () {

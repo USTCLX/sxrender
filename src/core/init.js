@@ -13,7 +13,7 @@ const DEFAULT_OPTIONS = {
     contentHeight: 500,
     backgroundColor: '',
     backgroundImage: '',
-    scrollBar: false,
+    scrollBar: true,
     scrollBarFade: false,
     disableTouch: true,
     disableMouse: false,
