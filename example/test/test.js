@@ -6,7 +6,7 @@ window.onload = function(){
     var painter = new SXRender('wrapper',{
         width:200,
         height:500,
-        contentWidth:200,
+        contentWidth:300,
         contentHeight:800,
         backgroundColor:"#fff"
     });

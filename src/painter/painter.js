@@ -27,18 +27,18 @@ class Painter {
         let ctx = this.ctx;
 
         //clear zone
-        clearCtx(ctx, {w: this.canvas.width, h: this.canvas.height});
+        this.clearCtx(ctx,{w:options.width,h:options.height});
 
         for (var i = 0, il = objs.length; i < il; i++) {
             switch (objs[i].type) {
                 case GraphType.Rect:
-                    drawRect(ctx, objs[i]);
+                    this.drawRect(ctx, objs[i]);
                     break;
                 case GraphType.Circle:
-                    drawCircle(ctx, objs[i]);
+                    this.drawCircle(ctx, objs[i]);
                     break;
                 case GraphType.Image:
-                    drawImage(ctx, objs[i]);
+                    this.drawImage(ctx, objs[i]);
                     break;
                 default:
                     console.error('not match type in render all');
@@ -47,131 +47,136 @@ class Painter {
         }
 
         //demo
-        ctx.setTransform(1,0,0,1,params.x,params.y);
+        ctx.setTransform(1, 0, 0, 1, params.x, params.y);
         ctx.save();
         ctx.fillStyle = "#f00";
-        ctx.fillRect(20,20,20,20);
-        ctx.fillRect(20,100,20,20);
-        ctx.fillRect(20,200,20,20);
-        ctx.fillRect(20,300,20,20);
-        ctx.fillRect(20,500,20,20);
-        ctx.fillRect(20,600,20,20);
+        ctx.fillRect(20, 20, 20, 20);
+        ctx.fillRect(20, 100, 20, 20);
+        ctx.fillRect(20, 200, 20, 20);
+        ctx.fillRect(20, 300, 20, 20);
+        ctx.fillRect(20, 500, 20, 20);
+        ctx.fillRect(20, 600, 20, 20);
         ctx.restore();
-        ctx.setTransform(1,0,0,1,0,0);
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
 
         //draw scroll bar
-        // drawScrollBar(ctx, params, options);
+        this.drawScrollBar(ctx, params, options);
     }
 
-}
-
-function clearCtx(ctx, opts) {
-    var x, y, w, h;
-    var opts = opts || {};
-    x = opts.x || 0;
-    y = opts.y || 0;
-    w = opts.w || 0;
-    h = opts.h || 0;
-    ctx.save();
-    ctx.clearRect(x, y, w, h);
-    ctx.restore();
-}
-
-function drawRect(ctx, obj) {
-    var x, y, w, h, color;
-    x = obj.x;
-    y = obj.y;
-    w = obj.width;
-    h = obj.height;
-    color = obj.fill;
-    ctx.save();
-    ctx.fillStyle = color;
-    ctx.fillRect(x, y, w, h);
-    ctx.restore();
-}
-
-function drawCircle(ctx, obj) {
-    var x, y, radius, color;
-    var startAngle = Math.PI * 0;
-    var endAngle = Math.PI * 2;
-    var anticlockwise = false;
-
-    x = obj.x;
-    y = obj.y;
-    radius = obj.radius;
-    color = obj.fill;
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.fillStyle = color;
-    ctx.arc(x, y, radius, startAngle, endAngle, anticlockwise);
-    ctx.fill();
-    ctx.closePath();
-    ctx.restore();
-}
-
-function drawImage(ctx, obj) {
-    var imgObj, x, y, w, h, dx, dy, dw, dh;
-    imgObj = obj.imgObj;
-    x = obj.x || 0;
-    y = obj.y || 0;
-    w = obj.w;
-    h = obj.h;
-    dx = obj.dx || 0;
-    dy = obj.dy || 0;
-    dw = obj.dw || 0;
-    dh = obj.dh || 0;
-    ctx.save();
-    if (dw && dh) {
-        ctx.drawImage(imgObj, x, y, w, h, dx, dy, dw, dh);
-    } else if (w && h) {
-        ctx.drawImage(imgObj, x, y, w, h);
-    } else {
-        ctx.drawImage(imgObj, x, y);
-    }
-    ctx.restore();
-}
-
-function drawScrollBar(ctx, params, options) {
-    let height,
-        width,
-        x,
-        y,
-        color = SCROLLBAR_COLOR;
-    let w1 = options.width,      //视口宽高
-        h1 = options.height,
-        w2 = options.contentWidth,//内容宽高
-        h2 = options.contentHeight;
-
-    let x2 = params.x,   //内容坐标
-        y2 = params.y,
-        overflowX = params.overflowX,
-        overflowY = params.overflowY;
-
-    if (!params.scroll) {
-        return;
+    clearCtx(ctx,opts){
+        let x, y, w, h;
+        x = opts.x || 0;
+        y = opts.y || 0;
+        w = opts.h || 0;
+        h = opts.h || 0;
+        ctx.save();
+        ctx.clearRect(x, y, w, h);
+        console.log('clear',x,y,w,h);
+        ctx.restore();
     }
 
-    if (params.scrollX) {
-
+    drawRect(ctx,obj){
+        let x, y, w, h, color;
+        x = obj.x;
+        y = obj.y;
+        w = obj.width;
+        h = obj.height;
+        color = obj.fill;
+        ctx.save();
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, w, h);
+        ctx.restore();
     }
 
-    if (params.scrollY) {
-        height = h1 * h1 / h2-Math.abs(overflowY);
-        height = (height<10)?10:height;
+    drawCircle(ctx,obj){
+        let x, y, radius, color;
+        let startAngle = Math.PI * 0;
+        let endAngle = Math.PI * 2;
+        let anticlockwise = false;
 
-        width = SCROLLBAR_WIDTH;
+        x = obj.x;
+        y = obj.y;
+        radius = obj.radius;
+        color = obj.fill;
 
-        x = w1 - SCROLLBAR_WIDTH;
-
-        y = -height*y2/h2;
-        y = (y<0)?0:y;
+        ctx.save();
+        ctx.beginPath();
+        ctx.fillStyle = color;
+        ctx.arc(x, y, radius, startAngle, endAngle, anticlockwise);
+        ctx.fill();
+        ctx.closePath();
+        ctx.restore();
     }
 
-    ctx.save();
-    ctx.fillStyle = color;
-    ctx.fillRect(x, y, width, height);
-    ctx.restore();
+    drawImage(ctx,obj){
+        let imgObj, x, y, w, h, dx, dy, dw, dh;
+        imgObj = obj.imgObj;
+        x = obj.x || 0;
+        y = obj.y || 0;
+        w = obj.w;
+        h = obj.h;
+        dx = obj.dx || 0;
+        dy = obj.dy || 0;
+        dw = obj.dw || 0;
+        dh = obj.dh || 0;
+        ctx.save();
+        if (dw && dh) {
+            ctx.drawImage(imgObj, x, y, w, h, dx, dy, dw, dh);
+        } else if (w && h) {
+            ctx.drawImage(imgObj, x, y, w, h);
+        } else {
+            ctx.drawImage(imgObj, x, y);
+        }
+        ctx.restore();
+    }
+
+    drawScrollBar(ctx, params, options){
+        let height,
+            width,
+            x,
+            y,
+            color = SCROLLBAR_COLOR;
+        let w1 = options.width,      //视口宽高
+            h1 = options.height,
+            w2 = options.contentWidth,//内容宽高
+            h2 = options.contentHeight;
+
+        let x2 = params.x,   //内容坐标
+            y2 = params.y,
+            overflowX = params.overflowX,
+            overflowY = params.overflowY;
+
+        console.log('params.overflowY',params.overflowY);
+
+        if (!params.scroll) {
+            return;
+        }
+
+        if (params.scrollX) {
+
+        }
+
+        if (params.scrollY) {
+            height = h1 * h1 / h2 - Math.abs(overflowY);
+            height = (height < 10) ? 10 : height;
+
+
+
+            width = SCROLLBAR_WIDTH;
+
+            x = w1 - SCROLLBAR_WIDTH;
+
+            y = -height * y2 / h2;
+            y = (y < 0) ? 0 : y;
+        }
+
+        ctx.save();
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, width, height);
+        console.log(width,height);
+        ctx.restore();
+    }
 }
+
 
 export default Painter;

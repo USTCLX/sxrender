@@ -214,11 +214,11 @@ const Scroll = {
     },
 
     /**
-     * 开启动画动画
+     * 开启动画
      * @param destX  目标位置
      * @param destY
      * @param duration 持续时间
-     * @param easingFn
+     * @param easingFn  时间曲线，用于判断采用哪种动画
      * @private
      */
     _scrollAnimate: function (destX, destY, duration, easingFn, opts) {
@@ -228,7 +228,7 @@ const Scroll = {
 
         if (easingFn === Ease.spring) {
             let v = (opts && opts.v) || 0;
-            params.animateTimer = new SpringAnimation(params, ['y', 'overflowY'], v, 26, 170, {
+            params.animateTimer = new SpringAnimation(params, ['x', 'y', 'overflowX', 'overflowY'], v, 26, 170, {
                 x: params.x,
                 y: params.y,
                 overflowX: params.overflowX,
@@ -265,23 +265,26 @@ const Scroll = {
                 let {x, y} = this.state.curValue;
                 let {maxScrollX, minScrollX, maxScrollY, minScrollY} = params;
                 let vx = 0, vy = 0;
+
+                //todo:当前的速度计算没有标准化，通过尝试，发现如下算式可以得到比较好的效果
                 if (x > maxScrollX || x < minScrollX) {
                     let lx = this.lastState.curValue.x;
-                    vx = (x - lx) / (getNow() - this._lastTimeStamp)*1000/100;
+                    vx = (x - lx) / (getNow() - this._lastTimeStamp) * 1000 / 100;
                 }
                 if (y > maxScrollY || y < minScrollY) {
                     let ly = this.lastState.curValue.y;
-                    vy = (y - ly) / (getNow() - this._lastTimeStamp)*1000/100;
+                    vy = (y - ly) / (getNow() - this._lastTimeStamp) * 1000 / 100;
                 }
                 if (!!vx || !!vy) {
                     //over boundary
                     let absVX = Math.abs(vx);
                     let absVY = Math.abs(vy);
-                    let v = absVX>absVX?vx:vy;
-                    this.stop(); //停止当前动画
+                    let v = absVX > absVX ? vx : vy;
+
+                    this.stop();
                     let destX = x < minScrollX ? minScrollX : maxScrollX;
                     let destY = y < minScrollY ? minScrollY : maxScrollY;
-                    self._scrollAnimate(destX, destY, options.bounceTime, Ease.spring, {v: -v})
+                    self._scrollAnimate(destX, destY, options.bounceTime, Ease.spring, {v: -v});
                 }
 
             };
@@ -290,7 +293,6 @@ const Scroll = {
                 params.animateTimer = null;
             };
             params.animateTimer.start();
-
         }
 
     },

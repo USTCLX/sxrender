@@ -390,6 +390,9 @@ EventDispatcher.prototype.off = function (event, handler) {
  * Created by lixiang on 2018/2/26.
  */
 
+var SCROLLBAR_WIDTH = 4;
+var SCROLLBAR_COLOR = "#e00";
+
 var Painter = function () {
     function Painter(canvas, backCanvas, storage, params, options) {
         classCallCheck(this, Painter);
@@ -414,18 +417,18 @@ var Painter = function () {
             var ctx = this.ctx;
 
             //clear zone
-            clearCtx(ctx, { w: this.canvas.width, h: this.canvas.height });
+            this.clearCtx(ctx, { w: options.width, h: options.height });
 
             for (var i = 0, il = objs.length; i < il; i++) {
                 switch (objs[i].type) {
                     case GraphType.Rect:
-                        drawRect(ctx, objs[i]);
+                        this.drawRect(ctx, objs[i]);
                         break;
                     case GraphType.Circle:
-                        drawCircle(ctx, objs[i]);
+                        this.drawCircle(ctx, objs[i]);
                         break;
                     case GraphType.Image:
-                        drawImage(ctx, objs[i]);
+                        this.drawImage(ctx, objs[i]);
                         break;
                     default:
                         console.error('not match type in render all');
@@ -447,78 +450,147 @@ var Painter = function () {
             ctx.setTransform(1, 0, 0, 1, 0, 0);
 
             //draw scroll bar
-            // drawScrollBar(ctx, params, options);
+            this.drawScrollBar(ctx, params, options);
+        }
+    }, {
+        key: 'clearCtx',
+        value: function clearCtx(ctx, opts) {
+            var x = void 0,
+                y = void 0,
+                w = void 0,
+                h = void 0;
+            x = opts.x || 0;
+            y = opts.y || 0;
+            w = opts.h || 0;
+            h = opts.h || 0;
+            ctx.save();
+            ctx.clearRect(x, y, w, h);
+            console.log('clear', x, y, w, h);
+            ctx.restore();
+        }
+    }, {
+        key: 'drawRect',
+        value: function drawRect(ctx, obj) {
+            var x = void 0,
+                y = void 0,
+                w = void 0,
+                h = void 0,
+                color = void 0;
+            x = obj.x;
+            y = obj.y;
+            w = obj.width;
+            h = obj.height;
+            color = obj.fill;
+            ctx.save();
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, w, h);
+            ctx.restore();
+        }
+    }, {
+        key: 'drawCircle',
+        value: function drawCircle(ctx, obj) {
+            var x = void 0,
+                y = void 0,
+                radius = void 0,
+                color = void 0;
+            var startAngle = Math.PI * 0;
+            var endAngle = Math.PI * 2;
+            var anticlockwise = false;
+
+            x = obj.x;
+            y = obj.y;
+            radius = obj.radius;
+            color = obj.fill;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.fillStyle = color;
+            ctx.arc(x, y, radius, startAngle, endAngle, anticlockwise);
+            ctx.fill();
+            ctx.closePath();
+            ctx.restore();
+        }
+    }, {
+        key: 'drawImage',
+        value: function drawImage(ctx, obj) {
+            var imgObj = void 0,
+                x = void 0,
+                y = void 0,
+                w = void 0,
+                h = void 0,
+                dx = void 0,
+                dy = void 0,
+                dw = void 0,
+                dh = void 0;
+            imgObj = obj.imgObj;
+            x = obj.x || 0;
+            y = obj.y || 0;
+            w = obj.w;
+            h = obj.h;
+            dx = obj.dx || 0;
+            dy = obj.dy || 0;
+            dw = obj.dw || 0;
+            dh = obj.dh || 0;
+            ctx.save();
+            if (dw && dh) {
+                ctx.drawImage(imgObj, x, y, w, h, dx, dy, dw, dh);
+            } else if (w && h) {
+                ctx.drawImage(imgObj, x, y, w, h);
+            } else {
+                ctx.drawImage(imgObj, x, y);
+            }
+            ctx.restore();
+        }
+    }, {
+        key: 'drawScrollBar',
+        value: function drawScrollBar(ctx, params, options) {
+            var height = void 0,
+                width = void 0,
+                x = void 0,
+                y = void 0,
+                color = SCROLLBAR_COLOR;
+            var w1 = options.width,
+                //视口宽高
+            h1 = options.height,
+                w2 = options.contentWidth,
+                //内容宽高
+            h2 = options.contentHeight;
+
+            var x2 = params.x,
+                //内容坐标
+            y2 = params.y,
+                overflowX = params.overflowX,
+                overflowY = params.overflowY;
+
+            console.log('params.overflowY', params.overflowY);
+
+            if (!params.scroll) {
+                return;
+            }
+
+            if (params.scrollX) {}
+
+            if (params.scrollY) {
+                height = h1 * h1 / h2 - Math.abs(overflowY);
+                height = height < 10 ? 10 : height;
+
+                width = SCROLLBAR_WIDTH;
+
+                x = w1 - SCROLLBAR_WIDTH;
+
+                y = -height * y2 / h2;
+                y = y < 0 ? 0 : y;
+            }
+
+            ctx.save();
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, width, height);
+            console.log(width, height);
+            ctx.restore();
         }
     }]);
     return Painter;
 }();
-
-function clearCtx(ctx, opts) {
-    var x, y, w, h;
-    var opts = opts || {};
-    x = opts.x || 0;
-    y = opts.y || 0;
-    w = opts.w || 0;
-    h = opts.h || 0;
-    ctx.save();
-    ctx.clearRect(x, y, w, h);
-    ctx.restore();
-}
-
-function drawRect(ctx, obj) {
-    var x, y, w, h, color;
-    x = obj.x;
-    y = obj.y;
-    w = obj.width;
-    h = obj.height;
-    color = obj.fill;
-    ctx.save();
-    ctx.fillStyle = color;
-    ctx.fillRect(x, y, w, h);
-    ctx.restore();
-}
-
-function drawCircle(ctx, obj) {
-    var x, y, radius, color;
-    var startAngle = Math.PI * 0;
-    var endAngle = Math.PI * 2;
-    var anticlockwise = false;
-
-    x = obj.x;
-    y = obj.y;
-    radius = obj.radius;
-    color = obj.fill;
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.fillStyle = color;
-    ctx.arc(x, y, radius, startAngle, endAngle, anticlockwise);
-    ctx.fill();
-    ctx.closePath();
-    ctx.restore();
-}
-
-function drawImage(ctx, obj) {
-    var imgObj, x, y, w, h, dx, dy, dw, dh;
-    imgObj = obj.imgObj;
-    x = obj.x || 0;
-    y = obj.y || 0;
-    w = obj.w;
-    h = obj.h;
-    dx = obj.dx || 0;
-    dy = obj.dy || 0;
-    dw = obj.dw || 0;
-    dh = obj.dh || 0;
-    ctx.save();
-    if (dw && dh) {
-        ctx.drawImage(imgObj, x, y, w, h, dx, dy, dw, dh);
-    } else if (w && h) {
-        ctx.drawImage(imgObj, x, y, w, h);
-    } else {
-        ctx.drawImage(imgObj, x, y);
-    }
-    ctx.restore();
-}
 
 /**
  * Created by lixiang on 2018/2/26.
@@ -1451,11 +1523,11 @@ var Scroll = {
     },
 
     /**
-     * 开启动画动画
+     * 开启动画
      * @param destX  目标位置
      * @param destY
      * @param duration 持续时间
-     * @param easingFn
+     * @param easingFn  时间曲线，用于判断采用哪种动画
      * @private
      */
     _scrollAnimate: function _scrollAnimate(destX, destY, duration, easingFn, opts) {
@@ -1465,7 +1537,7 @@ var Scroll = {
 
         if (easingFn === Ease.spring) {
             var v = opts && opts.v || 0;
-            params.animateTimer = new SpringAnimation(params, ['y', 'overflowY'], v, 26, 170, {
+            params.animateTimer = new SpringAnimation(params, ['x', 'y', 'overflowX', 'overflowY'], v, 26, 170, {
                 x: params.x,
                 y: params.y,
                 overflowX: params.overflowX,
@@ -1508,6 +1580,8 @@ var Scroll = {
 
                 var vx = 0,
                     vy = 0;
+
+                //todo:当前的速度计算没有标准化，通过尝试，发现如下算式可以得到比较好的效果
                 if (x > maxScrollX || x < minScrollX) {
                     var lx = this.lastState.curValue.x;
                     vx = (x - lx) / (getNow() - this._lastTimeStamp) * 1000 / 100;
@@ -1520,7 +1594,8 @@ var Scroll = {
                     //over boundary
                     var absVX = Math.abs(vx);
                     var _v = absVX > absVX ? vx : vy;
-                    this.stop(); //停止当前动画
+
+                    this.stop();
                     var _destX = x < minScrollX ? minScrollX : maxScrollX;
                     var _destY = y < minScrollY ? minScrollY : maxScrollY;
                     self._scrollAnimate(_destX, _destY, options.bounceTime, Ease.spring, { v: -_v });
