@@ -61,6 +61,8 @@ const calTimingFunctionBySpring = function (damping, stiffness, initialVelocity,
  * stiffness 弹力系数,一般为180 系统中采用170
  * duration 弹跳动画持续时间，一般为2000ms
  */
+
+//todo:目前startValue和stopValue支持对象，也支持两个方向，但是v仍然只支持单方向的速度，需要加入双向速度支持
 let SpringAnimation = function (target, key, initialVelocity, damping, stiffness, startValue, stopValue, duration, opts) {
     Animation.apply(this, [target, key, startValue, stopValue, duration]);
     this.initialVelocity = initialVelocity || 0;

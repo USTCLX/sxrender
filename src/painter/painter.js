@@ -130,6 +130,7 @@ class Painter {
         ctx.restore();
     }
 
+    //todo:scroll bar的逻辑还没有完善，还需要加入淡入淡出
     drawScrollBar(ctx, params, options){
         let height,
             width,
