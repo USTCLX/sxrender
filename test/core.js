@@ -541,6 +541,9 @@ var Painter = function () {
             }
             ctx.restore();
         }
+
+        //todo:scroll bar的逻辑还没有完善，还需要加入淡入淡出
+
     }, {
         key: 'drawScrollBar',
         value: function drawScrollBar(ctx, params, options) {
@@ -561,8 +564,6 @@ var Painter = function () {
             y2 = params.y,
                 overflowX = params.overflowX,
                 overflowY = params.overflowY;
-
-            console.log('params.overflowY', params.overflowY);
 
             if (!params.scroll) {
                 return;
@@ -1115,6 +1116,8 @@ var calTimingFunctionBySpring = function calTimingFunctionBySpring(damping, stif
  * stiffness 弹力系数,一般为180 系统中采用170
  * duration 弹跳动画持续时间，一般为2000ms
  */
+
+//todo:目前startValue和stopValue支持对象，也支持两个方向，但是v仍然只支持单方向的速度，需要加入双向速度支持
 var SpringAnimation = function SpringAnimation(target, key, initialVelocity, damping, stiffness, startValue, stopValue, duration, opts) {
     Animation.apply(this, [target, key, startValue, stopValue, duration]);
     this.initialVelocity = initialVelocity || 0;
@@ -1598,6 +1601,9 @@ var Scroll = {
                     this.stop();
                     var _destX = x < minScrollX ? minScrollX : maxScrollX;
                     var _destY = y < minScrollY ? minScrollY : maxScrollY;
+
+                    params.overflowX = x < minScrollX ? x - minScrollX : x - maxScrollX;
+                    params.overflowY = y < minScrollY ? y - minScrollY : y - maxScrollY;
                     self._scrollAnimate(_destX, _destY, options.bounceTime, Ease.spring, { v: -_v });
                 }
             };

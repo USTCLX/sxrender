@@ -284,6 +284,9 @@ const Scroll = {
                     this.stop();
                     let destX = x < minScrollX ? minScrollX : maxScrollX;
                     let destY = y < minScrollY ? minScrollY : maxScrollY;
+
+                    params.overflowX = x<minScrollX?(x-minScrollX):(x-maxScrollX);
+                    params.overflowY = y<minScrollY?(y-minScrollY):(y-maxScrollY);
                     self._scrollAnimate(destX, destY, options.bounceTime, Ease.spring, {v: -v});
                 }
 

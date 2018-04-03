@@ -147,7 +147,6 @@ class Painter {
             overflowX = params.overflowX,
             overflowY = params.overflowY;
 
-        console.log('params.overflowY',params.overflowY);
 
         if (!params.scroll) {
             return;
@@ -160,8 +159,6 @@ class Painter {
         if (params.scrollY) {
             height = h1 * h1 / h2 - Math.abs(overflowY);
             height = (height < 10) ? 10 : height;
-
-
 
             width = SCROLLBAR_WIDTH;
 
