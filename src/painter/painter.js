@@ -60,7 +60,9 @@ class Painter {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
 
         //draw scroll bar
-        this.drawScrollBar(ctx, params, options);
+        if(params.scroll){
+            this.drawScrollBar(ctx, params, options);
+        }
     }
 
     clearCtx(ctx,opts){
@@ -147,11 +149,6 @@ class Painter {
             overflowX = params.overflowX,
             overflowY = params.overflowY;
 
-
-        if (!params.scroll) {
-            return;
-        }
-
         if (params.scrollX) {
 
         }
@@ -171,7 +168,6 @@ class Painter {
         ctx.save();
         ctx.fillStyle = color;
         ctx.fillRect(x, y, width, height);
-        console.log(width,height);
         ctx.restore();
     }
 }
