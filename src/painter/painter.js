@@ -73,7 +73,6 @@ class Painter {
         h = opts.h || 0;
         ctx.save();
         ctx.clearRect(x, y, w, h);
-        console.log('clear',x,y,w,h);
         ctx.restore();
     }
 
@@ -154,8 +153,8 @@ class Painter {
         }
 
         if (params.scrollY) {
-            height = h1 * h1 / h2 - Math.abs(overflowY);
-            height = (height < 10) ? 10 : height;
+            height = h1 * h1 / h2;
+            // height = (height < 10) ? 10 : height;
 
             width = SCROLLBAR_WIDTH;
 
@@ -167,6 +166,7 @@ class Painter {
 
         ctx.save();
         ctx.fillStyle = color;
+        console.log('y','height',y,height);
         ctx.fillRect(x, y, width, height);
         ctx.restore();
     }

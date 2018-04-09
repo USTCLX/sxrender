@@ -450,7 +450,9 @@ var Painter = function () {
             ctx.setTransform(1, 0, 0, 1, 0, 0);
 
             //draw scroll bar
-            this.drawScrollBar(ctx, params, options);
+            if (params.scroll) {
+                this.drawScrollBar(ctx, params, options);
+            }
         }
     }, {
         key: 'clearCtx',
@@ -465,7 +467,6 @@ var Painter = function () {
             h = opts.h || 0;
             ctx.save();
             ctx.clearRect(x, y, w, h);
-            console.log('clear', x, y, w, h);
             ctx.restore();
         }
     }, {
@@ -565,15 +566,11 @@ var Painter = function () {
                 overflowX = params.overflowX,
                 overflowY = params.overflowY;
 
-            if (!params.scroll) {
-                return;
-            }
-
             if (params.scrollX) {}
 
             if (params.scrollY) {
-                height = h1 * h1 / h2 - Math.abs(overflowY);
-                height = height < 10 ? 10 : height;
+                height = h1 * h1 / h2;
+                // height = (height < 10) ? 10 : height;
 
                 width = SCROLLBAR_WIDTH;
 
@@ -585,8 +582,8 @@ var Painter = function () {
 
             ctx.save();
             ctx.fillStyle = color;
+            console.log('y', 'height', y, height);
             ctx.fillRect(x, y, width, height);
-            console.log(width, height);
             ctx.restore();
         }
     }]);
