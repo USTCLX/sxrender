@@ -141,7 +141,6 @@ const checkType = function (obj) {
     return str.slice(8, str.length - 1).toLowerCase();
 };
 
-
 /**
  * 修饰器/合成器
  * @param {Object/Function} target
@@ -189,6 +188,41 @@ const getNow = function () {
 
 
 /**
+ * 判断一个对象是否是数组
+ * @param obj
+ */
+const isArray = function (obj) {
+    return checkType(obj) === BaseType.Array;
+};
+
+/**
+ * 判断一个对象是否是字符串
+ * @param obj
+ * @returns {boolean}
+ */
+const isString = function (obj) {
+    return checkType(obj) === BaseType.String;
+};
+
+/**
+ * 判断一个对象是否是数字
+ * @param obj
+ * @returns {boolean}
+ */
+const isNumber = function (obj) {
+    return checkType(obj) === BaseType.Number;
+};
+
+/**
+ * 判断一个对象是否是个纯对象
+ * @param obj
+ * @returns {boolean}
+ */
+const isObject = function (obj) {
+    return checkType(obj) === BaseType.Object;
+};
+
+/**
  * s
  * @type {{swipe: {style: string}}}
  */
@@ -215,15 +249,14 @@ const Ease = {
             return 1 - (--t * t * t * t);
         }
     },
-    spring:{
+    spring: {
         //弹簧效果，并没有具体实现，而是使用了SpringAnimation类来实现。此处用于判断
-        style:'spring',
-        fn:function(){
+        style: 'spring',
+        fn: function () {
 
         }
     }
 };
-
 
 
 const BaseType = {
@@ -253,6 +286,10 @@ export {
     mixin,
     extend,
     getNow,
+    isArray,
+    isNumber,
+    isObject,
+    isString,
     Ease,
     BaseType,
     GraphType
