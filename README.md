@@ -4,4 +4,4 @@ a simple canvas library
 
 
 ## DEMO
-https://ustclx.github.io/sxrender/example/test/test.html
+https://ustclx.github.io/sxrender/example/demo/Dom.html
