@@ -1,11 +1,12 @@
 window.onload = function(){
     var paintBoard = new SXRender({
-        // id:'c',
+        id:'c',
         w:300,
-        h:2000,
-        // contentW:300,
-        // contentH:2000,
-        drawScrollBar:false
+        h:500,
+        contentW:300,
+        contentH:2000,
+        drawScrollBar:true,
+        backgroundColor:'rgb(159,192,234)',
     });//画板
 
 
@@ -17,31 +18,31 @@ window.onload = function(){
     paintBoard.reRender();
 
 
-    var paintBoard2 = new SXRender({
-        id:'c',
-        w:300,
-        h:500,
-        contentW:300,
-        contentH:2000,
-        backgroundColor:'rgb(159,192,234)',
-        drawScrollBar:true
-    });
+    // var paintBoard2 = new SXRender({
+    //     id:'c',
+    //     w:300,
+    //     h:500,
+    //     contentW:300,
+    //     contentH:2000,
+    //     backgroundColor:'rgb(159,192,234)',
+    //     drawScrollBar:true
+    // });
 
 
 
-    var paintBoardImg = new Image();
-    paintBoardImg.onload = function(){
-        paintBoard2.add({
-            type:'image',
-            imgObj:paintBoardImg,
-            w:paintBoard.width,
-            h:paintBoard.height,
-            x:0,
-            y:0
-        });
-        paintBoard2.reRender()
-    };
+    // var paintBoardImg = new Image();
+    // paintBoardImg.onload = function(){
+    //     paintBoard2.add({
+    //         type:'image',
+    //         imgObj:paintBoardImg,
+    //         w:paintBoard.width,
+    //         h:paintBoard.height,
+    //         x:0,
+    //         y:0
+    //     });
+    //     paintBoard2.reRender()
+    // };
 
-    paintBoardImg.src = paintBoard.canvas.toDataURL();
+    // paintBoardImg.src = paintBoard.canvas.toDataURL();
 
 };
